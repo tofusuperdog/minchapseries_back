@@ -96,7 +96,7 @@ export default function Home() {
           <div className="flex flex-col items-center justify-center flex-1">
             <div className="relative w-[360px] h-[100px] flex items-center justify-center">
               <Image
-                src="/minchaplogo.webp"
+                src="/minchaplogo_main.webp"
                 alt="minChap Logo"
                 fill
                 sizes="320px"
