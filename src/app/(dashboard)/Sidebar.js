@@ -80,7 +80,7 @@ export default function Sidebar() {
         <div>
           <div className="p-8 pb-4 flex flex-col items-center justify-center">
             <div className="relative w-[210px] h-[55px]">
-              <Image src="/Minchaplogo.webp" alt="minChap Logo" fill sizes="180px" style={{ objectFit: 'contain' }} priority />
+              <Image src="/minchaplogo.webp" alt="minChap Logo" fill sizes="180px" style={{ objectFit: 'contain' }} priority />
             </div>
             <p className="text-xs text-gray-300 font-light tracking-wider mt-[-6px]">TikTok Minis CMS</p>
           </div>
