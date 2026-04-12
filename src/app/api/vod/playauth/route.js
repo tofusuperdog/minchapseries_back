@@ -16,7 +16,14 @@ export async function GET(request) {
   vodService.setSecretKey(process.env.SecretAccessKey);
 
   try {
-    const playAuthToken = vodService.GetPlayAuthToken({ Vid: vid }, 3600);
+    const params = { Vid: vid };
+    
+    // If you have multiple spaces or need explicit domain binding, adding SpaceName helps BytePlus find your delivery domain
+    if (process.env.VOD_SPACE_NAME) {
+      params.SpaceName = process.env.VOD_SPACE_NAME;
+    }
+
+    const playAuthToken = vodService.GetPlayAuthToken(params, 3600);
     return NextResponse.json({ playAuthToken });
   } catch (error) {
     console.error('Error generating play auth token:', error);
