@@ -154,6 +154,12 @@ export default function SalesPage() {
     ));
   };
 
+  const handleVipRadioChange = (id) => {
+    setVipPackages(prev => prev.map(pkg =>
+      ({ ...pkg, is_recommended: pkg.id === id })
+    ));
+  };
+
   const handleCancelVip = () => {
     setVipPackages(JSON.parse(JSON.stringify(originalVipPackages)));
   };
@@ -173,10 +179,11 @@ export default function SalesPage() {
       await supabase
         .from('vip_package')
         .update({
-          price_thb: pkg.price_thb,
-          price_usd: pkg.price_usd,
-          price_jpy: pkg.price_jpy,
-          price_cny: pkg.price_cny
+          price_thb: pkg.price_thb === '' ? 0 : pkg.price_thb,
+          price_usd: pkg.price_usd === '' ? 0 : pkg.price_usd,
+          price_jpy: pkg.price_jpy === '' ? 0 : pkg.price_jpy,
+          price_cny: pkg.price_cny === '' ? 0 : pkg.price_cny,
+          is_recommended: pkg.is_recommended
         })
         .eq('id', pkg.id);
     }
@@ -380,7 +387,7 @@ export default function SalesPage() {
           )}
 
           {activeTab === 'vip' && (
-            <div className="w-full max-w-[800px] mx-auto flex flex-col items-center animate-fadeIn">
+            <div className="w-full max-w-[1200px] mx-auto flex flex-col items-center animate-fadeIn">
 
               {/* Master Toggle for VIP */}
               <div className="w-full flex justify-end items-center mb-6">
@@ -396,61 +403,121 @@ export default function SalesPage() {
                 </label>
               </div>
 
-              <div className={`w-full flex flex-col items-center transition-all duration-300 ${!isVipActive ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-                <table className="w-full text-center text-[15px] font-medium text-white mb-10 border-collapse">
-                  <thead>
-                    <tr className="border-b-[0.5px] border-b-gray-700 bg-[#0c0a1b]/40">
-                      <th className="py-4 font-medium tracking-wider">ประเภท</th>
-                      <th className="py-4 font-medium tracking-wider">ไทย (THB)</th>
-                      <th className="py-4 font-medium tracking-wider">USA (USD)</th>
-                      <th className="py-4 font-medium tracking-wider">ญี่ปุ่น (JPY)</th>
-                      <th className="py-4 font-medium tracking-wider">จีน (CNY)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan={5} className="py-10 text-gray-500 font-light">กำลังโหลดแพ็กเกจ...</td>
+              <div className={`w-full flex flex-col xl:flex-row items-start justify-center gap-5 transition-all duration-300 ${!isVipActive ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+
+                {/* VIP Preview Section */}
+                <div className="w-[360px] shrink-0 mb-4 p-4 rounded-xl bg-[#0a0a0a] border border-gray-800 shadow-xl overflow-hidden">
+                  <div className="flex items-center gap-3 mb-4 pl-1">
+                    <img src="/popcornicon.svg" alt="Popcorn" className="w-[34px] h-[34px] mt-1 shrink-0 drop-shadow-md" />
+                    <h2 className="text-[22px] font-semibold text-white tracking-wide mt-1">Minchap - VIP</h2>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    {vipPackages.map(pkg => {
+                      const isRecommended = pkg.is_recommended;
+                      const cardBg = isRecommended ? 'bg-[#51139f]' : 'bg-[#151515]';
+                      const cardBorderColor = isRecommended ? 'border-transparent' : 'border-[#4e109d]';
+
+                      return (
+                        <div key={`vip-preview-${pkg.id}`} className={`relative p-4 rounded-xl border ${cardBorderColor} ${cardBg} shadow-lg overflow-hidden flex justify-between items-center`}>
+
+                          {/* Recommended Badge */}
+                          {isRecommended && (
+                            <div className="absolute top-0 right-0 bg-[#cb2385] text-white text-[12px] font-medium px-3 py-1 rounded-bl-xl z-10 shadow-sm">
+                              ยอดนิยม
+                            </div>
+                          )}
+
+                          <div className="flex flex-col z-0 relative">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <img src="/popcornicon.svg" alt="Popcorn base" className="w-[20px] h-[20px] drop-shadow-sm mb-0.5" />
+                              <span className="text-[19px] font-medium text-white">{pkg.type}</span>
+                            </div>
+                            <div className="text-[13px] text-white/90 font-light mt-0.5 w-max">ดูซีรีย์ได้ไม่จำกัด</div>
+                            <div className="text-[11px] text-white/70 font-light mt-0.5">ต่ออายุอัตโนมัติ ยกเลิกได้ตลอดเวลา</div>
+                          </div>
+
+                          <div className="flex flex-col items-end justify-center pt-5 pr-1 relative z-0">
+                            <div className="text-[26px] font-bold text-white tracking-wide leading-none select-none">
+                              {pkg.price_thb} <span className="text-[18px] font-medium ml-1">บาท</span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* VIP Table Section */}
+                <div className="flex-1 w-full bg-[#12102f]/40 rounded-xl p-4 overflow-x-auto border border-[#2d2252]/50">
+                  <table className="w-full text-center text-[13px] font-medium text-white border-collapse min-w-[600px]">
+                    <thead>
+                      <tr className="border-b-[0.5px] border-b-gray-700 bg-[#0c0a1b]/60">
+                        <th className="py-3 px-2 font-medium tracking-wide">ประเภท</th>
+                        <th className="py-3 px-2 font-medium tracking-wide">ไทย (THB)</th>
+                        <th className="py-3 px-2 font-medium tracking-wide">USA (USD)</th>
+                        <th className="py-3 px-2 font-medium tracking-wide">ญี่ปุ่น (JPY)</th>
+                        <th className="py-3 px-2 font-medium tracking-wide">จีน (CNY)</th>
+                        <th className="py-3 px-2 font-medium tracking-wide">แพ็กเกจแนะนำ</th>
                       </tr>
-                    ) : vipPackages.map((pkg, idx) => (
-                      <tr key={pkg.id} className={`${idx % 2 === 0 ? 'bg-[#28214f]/30' : 'bg-[#28214f]/10'}`}>
-                        <td className="py-3 font-light text-gray-200">{pkg.type}</td>
-                        <td className="py-3">
-                          <input
-                            type="number"
-                            value={pkg.price_thb}
-                            onChange={(e) => handleVipChange(pkg.id, 'price_thb', parseInt(e.target.value) || 0)}
-                            className="w-[70%] max-w-[80px] h-7 bg-[#e5e7eb] text-black text-center focus:outline-none focus:ring-2 focus:ring-[#709bf0]"
-                          />
-                        </td>
-                        <td className="py-3">
-                          <input
-                            type="number"
-                            value={pkg.price_usd}
-                            onChange={(e) => handleVipChange(pkg.id, 'price_usd', parseInt(e.target.value) || 0)}
-                            className="w-[70%] max-w-[80px] h-7 bg-[#e5e7eb] text-black text-center focus:outline-none focus:ring-2 focus:ring-[#709bf0]"
-                          />
-                        </td>
-                        <td className="py-3">
-                          <input
-                            type="number"
-                            value={pkg.price_jpy}
-                            onChange={(e) => handleVipChange(pkg.id, 'price_jpy', parseInt(e.target.value) || 0)}
-                            className="w-[70%] max-w-[80px] h-7 bg-[#e5e7eb] text-black text-center focus:outline-none focus:ring-2 focus:ring-[#709bf0]"
-                          />
-                        </td>
-                        <td className="py-3">
-                          <input
-                            type="number"
-                            value={pkg.price_cny}
-                            onChange={(e) => handleVipChange(pkg.id, 'price_cny', parseInt(e.target.value) || 0)}
-                            className="w-[70%] max-w-[80px] h-7 bg-[#e5e7eb] text-black text-center focus:outline-none focus:ring-2 focus:ring-[#709bf0]"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={6} className="py-10 text-gray-500 font-light text-[14px]">กำลังโหลดแพ็กเกจ...</td>
+                        </tr>
+                      ) : vipPackages.map((pkg, idx) => (
+                        <tr key={pkg.id} className={`${idx % 2 === 0 ? 'bg-[#28214f]/30' : 'bg-[#28214f]/10'} hover:bg-[#3d3278]/20 transition-colors`}>
+                          <td className="py-2 px-2 text-gray-200">{pkg.type}</td>
+                          <td className="py-2 px-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={pkg.price_thb}
+                              onChange={(e) => handleVipChange(pkg.id, 'price_thb', e.target.value)}
+                              className="w-full max-w-[75px] h-7 bg-[#e5e7eb] text-black text-center focus:outline-none focus:ring-2 focus:ring-[#709bf0] text-[13px] rounded-sm"
+                            />
+                          </td>
+                          <td className="py-2 px-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={pkg.price_usd}
+                              onChange={(e) => handleVipChange(pkg.id, 'price_usd', e.target.value)}
+                              className="w-full max-w-[75px] h-7 bg-[#e5e7eb] text-black text-center focus:outline-none focus:ring-2 focus:ring-[#709bf0] text-[13px] rounded-sm"
+                            />
+                          </td>
+                          <td className="py-2 px-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={pkg.price_jpy}
+                              onChange={(e) => handleVipChange(pkg.id, 'price_jpy', e.target.value)}
+                              className="w-full max-w-[75px] h-7 bg-[#e5e7eb] text-black text-center focus:outline-none focus:ring-2 focus:ring-[#709bf0] text-[13px] rounded-sm"
+                            />
+                          </td>
+                          <td className="py-2 px-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={pkg.price_cny}
+                              onChange={(e) => handleVipChange(pkg.id, 'price_cny', e.target.value)}
+                              className="w-full max-w-[75px] h-7 bg-[#e5e7eb] text-black text-center focus:outline-none focus:ring-2 focus:ring-[#709bf0] text-[13px] rounded-sm"
+                            />
+                          </td>
+                          <td className="py-2 px-2">
+                            <div className="flex justify-center transform scale-90">
+                              <CustomRadio
+                                checked={pkg.is_recommended || false}
+                                onChange={() => handleVipRadioChange(pkg.id)}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div className="w-full flex justify-center gap-4 mt-6 mb-2">

@@ -1,9 +1,64 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import '@byteplus/veplayer/index.min.css';
+
+// Helper component for BytePlus VePlayer
+function VePlayerComponent({ vid, playAuthToken }) {
+  const containerRef = useRef(null);
+  const playerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !vid || !playAuthToken) return;
+
+    let playerInstance = null;
+
+    const initPlayer = async () => {
+      // Dynamic import to avoid SSR issues with VePlayer
+      const VePlayer = (await import('@byteplus/veplayer')).default;
+      
+      const playerId = `veplayer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      containerRef.current.id = playerId;
+
+      // License is required for BytePlus VePlayer
+      if (process.env.NEXT_PUBLIC_BYTEPLUS_LICENSE) {
+        // VePlayer.setLicenseConfig was introduced for Web SDK licenses
+        if (typeof VePlayer.setLicenseConfig === 'function') {
+          await VePlayer.setLicenseConfig({ license: process.env.NEXT_PUBLIC_BYTEPLUS_LICENSE });
+        }
+      }
+
+      playerInstance = new VePlayer({
+        id: playerId,
+        vid,
+        playAuthToken,
+        width: '100%',
+        height: '100%',
+        license: process.env.NEXT_PUBLIC_BYTEPLUS_LICENSE || '', // fallback
+        disableVodLogOptsCheck: true,
+        vodLogOpts: {
+          line_app_id: 0,
+          line_user_id: 'unknown'
+        }
+      });
+      playerRef.current = playerInstance;
+    };
+
+    initPlayer();
+
+    return () => {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+    };
+  }, [vid, playAuthToken]);
+
+  return <div ref={containerRef} className="w-full h-full bg-black"></div>;
+}
 
 // Helper for pill badges
 function LangBadge({ label, active }) {
@@ -79,6 +134,38 @@ export default function EpisodesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [episodeToDelete, setEpisodeToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Video Playing State
+  const [playingVid, setPlayingVid] = useState(null);
+  const [playAuthToken, setPlayAuthToken] = useState(null);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+
+  const closeVideoModal = () => {
+    setPlayingVid(null);
+    setPlayAuthToken(null);
+  };
+
+  const playVideo = async (vid) => {
+    if (!vid) return;
+    setIsVideoLoading(true);
+    setPlayingVid(vid);
+    try {
+      const res = await fetch(`/api/vod/playauth?vid=${vid}`);
+      const data = await res.json();
+      if (res.ok && data.playAuthToken) {
+        setPlayAuthToken(data.playAuthToken);
+      } else {
+        alert('ไม่สามารถดึงข้อมูลสำหรับเล่นวิดีโอได้ (Failed to load token)');
+        closeVideoModal();
+      }
+    } catch (e) {
+      console.error(e);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ (Error fetching token)');
+      closeVideoModal();
+    } finally {
+      setIsVideoLoading(false);
+    }
+  };
 
   const confirmDeleteEpisode = async () => {
     if (!episodeToDelete) return;
@@ -308,9 +395,9 @@ export default function EpisodesPage() {
                     <td className="py-3 text-center">
                       <div className="flex justify-center items-center">
                         {savedEp.video_url ? (
-                          <a href={savedEp.video_url} target="_blank" rel="noreferrer" className="text-[#a1a1aa] hover:text-white transition-colors cursor-pointer">
+                          <button onClick={() => playVideo(savedEp.video_url)} className="text-[#a1a1aa] hover:text-white transition-colors cursor-pointer outline-none">
                             <PlayIcon />
-                          </a>
+                          </button>
                         ) : (
                           <span className="text-gray-600 cursor-not-allowed">
                             <PlayIcon />
@@ -487,6 +574,27 @@ export default function EpisodesPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Video Player Modal */}
+      {playingVid && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 backdrop-blur-md">
+           <button onClick={closeVideoModal} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-[80] outline-none">
+             <div className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+               <XIcon />
+             </div>
+           </button>
+           
+           <div className="w-full max-w-5xl aspect-video relative rounded-lg overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10 bg-black">
+             {isVideoLoading || !playAuthToken ? (
+               <div className="absolute inset-0 flex items-center justify-center">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5c67f2]"></div>
+               </div>
+             ) : (
+               <VePlayerComponent vid={playingVid} playAuthToken={playAuthToken} />
+             )}
+           </div>
         </div>
       )}
     </div>
