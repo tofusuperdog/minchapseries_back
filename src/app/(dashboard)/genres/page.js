@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 
 function GenreModal({ isOpen, title, formData, setFormData, onClose, onSave, isSaving }) {
   const [error, setError] = useState('');
@@ -508,7 +509,7 @@ export default function GenresPage() {
                     {genreSeries.map(s => {
                       const isUnpublished = s.status !== 'published';
                       return (
-                        <div key={s.id} className="flex-shrink-0 w-[145px] flex flex-col group cursor-pointer hover:opacity-80 transition-opacity rounded-md overflow-hidden border border-[#2d2252] shadow-md bg-[#1D1D1D]">
+                        <Link href={`/series/${s.id}`} key={s.id} className="flex-shrink-0 w-[145px] flex flex-col group cursor-pointer hover:opacity-80 transition-opacity rounded-md overflow-hidden border border-[#2d2252] shadow-md bg-[#1D1D1D]">
                           <div className="w-full h-[204px] relative bg-[#0d0a1b]">
                             {s.poster_url ? (
                               <Image src={s.poster_url} alt={s.title_th} fill sizes="145px" style={{ objectFit: 'cover' }} className={isUnpublished ? "grayscale" : ""} />
@@ -526,7 +527,7 @@ export default function GenresPage() {
                           <div className="text-[12px] text-gray-200 w-full p-2 text-center tracking-wide line-clamp-2 min-h-[48px] flex items-center justify-center font-light leading-snug" title={s.title_th}>
                             {s.title_th}
                           </div>
-                        </div>
+                        </Link>
                       )
                     })}
                     {genreSeries.length === 0 && (

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 function LangBadge({ label, active }) {
   if (!active) return null;
   return (
-    <span className="border border-gray-600 text-gray-300 text-[10px] w-6 h-4 rounded flex items-center justify-center font-medium">
+    <span className="w-[32px] h-[22px] border border-gray-500 rounded flex items-center justify-center text-[11px] font-medium text-gray-300 bg-white/5 mx-[2px]">
       {label}
     </span>
   );
@@ -80,6 +80,19 @@ export default function SeriesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const [errorMsg, setErrorMsg] = useState('');
+  const [errorVisible, setErrorVisible] = useState(false);
+  const errorTimeoutRef = useRef(null);
+
+  const showError = (msg) => {
+    setErrorMsg(msg);
+    setErrorVisible(true);
+    if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+    errorTimeoutRef.current = setTimeout(() => {
+      setErrorVisible(false);
+    }, 4000);
+  };
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -119,9 +132,27 @@ export default function SeriesPage() {
   };
 
   const handleUnpublish = async (id) => {
+    // Check if it's assigned to any main_banner slot
+    const { data: bannerData, error: bannerError } = await supabase
+      .from('main_banner')
+      .select('id')
+      .eq('series_id', id);
+
+    if (bannerError) {
+      showError('เกิดข้อผิดพลาดในการตรวจสอบข้อมูลแบนเนอร์');
+      return;
+    }
+
+    if (bannerData && bannerData.length > 0) {
+      showError('ไม่สามารถยกเลิกการเผยแพร่ได้ คุณต้องนำซีรีส์เรื่องนี้ออกจาก แบนเนอร์หลัก ก่อน');
+      return;
+    }
+
     const { error } = await supabase.from('series').update({ status: 'not_ready' }).eq('id', id);
     if (!error) {
       setSeries(prev => prev.map(s => s.id === id ? { ...s, status: 'not_ready' } : s));
+    } else {
+      showError('เกิดข้อผิดพลาดในการยกเลิกการเผยแพร่');
     }
   };
 
@@ -160,7 +191,17 @@ export default function SeriesPage() {
   }, [series, searchTerm, statusFilter, episodeCounts]);
 
   return (
-    <div className="w-full pb-20">
+    <div className="w-full pb-20 relative">
+      {/* Error Notification */}
+      <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 ease-out ${errorVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}>
+        <div className="bg-[#D24949] text-white px-6 py-3.5 rounded-lg shadow-2xl flex items-center space-x-4 w-max min-w-[300px]">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L22 20H2L12 2ZM11 16V18H13V16H11ZM11 10V14H13V10H11Z"/>
+          </svg>
+          <span className="font-medium tracking-wide">{errorMsg}</span>
+        </div>
+      </div>
+
       {/* Sticky Header & Filter container */}
       <div className="sticky top-0 z-40 bg-[#110d29] pb-3 mb-3 -mx-10 px-10 before:content-[''] before:absolute before:inset-x-0 before:bottom-full before:h-[40px] before:bg-[#110d29]">
         {/* Header */}
