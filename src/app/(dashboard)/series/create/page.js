@@ -11,9 +11,9 @@ function LangToggle({ label, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`w-9 h-7 text-xs border rounded flex items-center justify-center transition-colors cursor-pointer ${
+      className={`w-9 h-7 text-xs border rounded flex items-center justify-center transition-colors cursor-pointer font-medium ${
         active 
-          ? 'bg-[#181236] border-[#6C72FF] text-[#6C72FF]' 
+          ? 'bg-green-500 border-green-500 text-black shadow-[0_0_10px_rgba(34,197,94,0.3)]' 
           : 'bg-transparent border-gray-600 text-gray-300 hover:border-gray-400'
       }`}
     >
@@ -26,6 +26,19 @@ export default function CreateSeriesPage() {
   const router = useRouter();
   
   // State
+  const [errorMsg, setErrorMsg] = useState('');
+  const [errorVisible, setErrorVisible] = useState(false);
+  const errorTimeoutRef = useRef(null);
+
+  const showError = (msg) => {
+    setErrorMsg(msg);
+    setErrorVisible(true);
+    if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+    errorTimeoutRef.current = setTimeout(() => {
+      setErrorVisible(false);
+    }, 4000);
+  };
+
   const [genres, setGenres] = useState([]);
   const [loadingGenres, setLoadingGenres] = useState(true);
   
@@ -92,7 +105,7 @@ export default function CreateSeriesPage() {
     
     // Check extension
     if (!file.name.toLowerCase().endsWith('.webp') && file.type !== 'image/webp') {
-      alert('กรุณาอัปโหลดไฟล์ นามสกุล .webp เท่านั้น');
+      showError('กรุณาอัปโหลดไฟล์ นามสกุล .webp เท่านั้น');
       e.target.value = '';
       return;
     }
@@ -103,8 +116,23 @@ export default function CreateSeriesPage() {
   };
 
   const handleSave = async () => {
-    if (!formData.title_th.trim()) {
-      alert('กรุณากรอกชื่อเรื่อง (TH)');
+    if (!formData.title_th.trim() || !formData.title_en.trim() || !formData.title_jp.trim() || !formData.title_cn.trim()) {
+      showError('กรุณากรอกชื่อเรื่องให้ครบทั้ง 4 ภาษา');
+      return;
+    }
+
+    if (formData.genre_ids.length === 0) {
+      showError('กรุณาเลือกแนวหนังอย่างน้อย 1 แนว');
+      return;
+    }
+
+    if (!formData.dub_th && !formData.dub_en && !formData.dub_jp && !formData.dub_cn) {
+      showError('กรุณาเลือกเสียงพากย์อย่างน้อย 1 ภาษา');
+      return;
+    }
+
+    if (!posterFile) {
+      showError('กรุณาอัปโหลดรูปภาพโปสเตอร์');
       return;
     }
     
@@ -124,7 +152,7 @@ export default function CreateSeriesPage() {
         
       if (uploadError) {
         console.error('Error uploading poster:', uploadError);
-        alert('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ');
+        showError('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ');
         setIsSaving(false);
         return;
       }
@@ -159,7 +187,7 @@ export default function CreateSeriesPage() {
       
     if (dbError) {
       console.error('Error saving series:', dbError);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      showError('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
       setIsSaving(false);
       return;
     }
@@ -174,16 +202,29 @@ export default function CreateSeriesPage() {
     .join(', ');
 
   return (
-    <div className="w-full pb-20">
-      {/* Header */}
-      <div className="flex items-center mb-8 text-white">
-        <div className="relative w-6 h-6 mr-3">
-          <Image src="/series.svg" alt="Series" fill sizes="24px" style={{ objectFit: 'contain' }} />
+    <div className="w-full pb-20 relative">
+      {/* Error Notification */}
+      <div 
+        className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 ease-out ${errorVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}
+        style={{ display: errorMsg ? 'block' : 'none' }}
+      >
+        <div className="bg-[#D24949] text-white px-6 py-3.5 rounded shadow-2xl flex items-center space-x-4 w-max min-w-[300px]">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L22 20H2L12 2ZM11 16V18H13V16H11ZM11 10V14H13V10H11Z"/>
+          </svg>
+          <span className="font-medium tracking-wide">{errorMsg}</span>
         </div>
-        <h1 className="text-xl font-semibold tracking-wide flex items-center gap-2">
-          <Link href="/series" className="hover:text-gray-300 transition-colors">ซีรีส์</Link>
-          <span className="text-gray-300 font-light">&gt;</span>
-          <span className="text-gray-200">เพิ่มซีรีส์ใหม่</span>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center space-x-3 mb-8 text-white">
+        <div className="relative w-9 h-9">
+          <Image src="/series.svg" alt="Series" fill sizes="36px" style={{ objectFit: 'contain' }} />
+        </div>
+        <h1 className="text-xl text-gray-300 font-semibold tracking-wide flex items-center gap-2">
+          <Link href="/series" className="hover:text-white transition-colors underline underline-offset-4">ซีรีส์</Link>
+          <span className="text-gray-500 font-light text-[15px]">&gt;</span>
+          <span className="text-white font-light">เพิ่มซีรีส์ใหม่</span>
         </h1>
       </div>
 
@@ -225,7 +266,7 @@ export default function CreateSeriesPage() {
         {/* Right: Form */}
         <div className="space-y-6">
           <div className="flex items-start">
-            <span className="w-[120px] text-[15px] font-light text-white shrink-0 pt-2">ชื่อเรื่อง</span>
+            <span className="w-[120px] text-base font-light text-white shrink-0 pt-2">ชื่อเรื่อง</span>
             <div className="flex-1 space-y-3">
               <div className="flex items-center space-x-3">
                 <span className="w-9 h-7 border border-gray-500 rounded flex items-center justify-center text-[10px] text-gray-300 tracking-wider">TH</span>
@@ -247,7 +288,7 @@ export default function CreateSeriesPage() {
           </div>
 
           <div className="flex items-center">
-            <span className="w-[120px] text-[15px] font-light text-white shrink-0">แนวหนัง</span>
+            <span className="w-[120px] text-base font-light text-white shrink-0">แนวหนัง</span>
             <div className="flex-1 relative">
               <div 
                 onClick={() => setIsGenreOpen(!isGenreOpen)}
@@ -285,7 +326,7 @@ export default function CreateSeriesPage() {
           </div>
 
           <div className="flex items-center">
-            <span className="w-[120px] text-[15px] font-light text-white shrink-0">จำนวนตอน</span>
+            <span className="w-[120px] text-base font-light text-white shrink-0">จำนวนตอน</span>
             <div className="w-[100px]">
               <select 
                 value={formData.total_episodes}
@@ -300,7 +341,7 @@ export default function CreateSeriesPage() {
           </div>
 
           <div className="flex items-center">
-            <span className="w-[120px] text-[15px] font-light text-white shrink-0">เสียงพากย์</span>
+            <span className="w-[120px] text-base font-light text-white shrink-0">เสียงพากย์</span>
             <div className="flex space-x-2">
               <LangToggle label="TH" active={formData.dub_th} onClick={() => handleInputChange('dub_th', !formData.dub_th)} />
               <LangToggle label="EN" active={formData.dub_en} onClick={() => handleInputChange('dub_en', !formData.dub_en)} />
@@ -310,7 +351,7 @@ export default function CreateSeriesPage() {
           </div>
 
           <div className="flex items-center">
-            <span className="w-[120px] text-[15px] font-light text-white shrink-0">บรรยาย</span>
+            <span className="w-[120px] text-base font-light text-white shrink-0">บรรยาย</span>
             <div className="flex space-x-2">
               <LangToggle label="TH" active={formData.sub_th} onClick={() => handleInputChange('sub_th', !formData.sub_th)} />
               <LangToggle label="EN" active={formData.sub_en} onClick={() => handleInputChange('sub_en', !formData.sub_en)} />
@@ -318,25 +359,24 @@ export default function CreateSeriesPage() {
               <LangToggle label="CN" active={formData.sub_cn} onClick={() => handleInputChange('sub_cn', !formData.sub_cn)} />
             </div>
           </div>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex space-x-4 pt-10 pb-4">
-            <div className="w-[120px]"></div>
-            <Link
-              href="/series"
-              className="w-28 h-10 border border-gray-600 hover:bg-white/5 transition-colors rounded flex items-center justify-center text-gray-300 font-light text-[15px] cursor-pointer"
-            >
-              ยกเลิก
-            </Link>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-28 h-10 bg-[#5c85f1] hover:bg-[#4a72d7] transition-colors rounded text-white font-light text-[15px] cursor-pointer disabled:opacity-50 flex items-center justify-center"
-            >
-              {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
-            </button>
-          </div>
+        {/* Action Buttons (Full width) */}
+        <div className="flex justify-center space-x-4 pt-6 pb-0 col-span-1 md:col-span-2 border-t border-white/5 -mt-8">
+          <Link
+            href="/series"
+            className="w-28 h-10 border border-gray-600 hover:bg-white/5 transition-colors rounded flex items-center justify-center text-gray-300 font-light text-[15px] cursor-pointer"
+          >
+            ยกเลิก
+          </Link>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-28 h-10 bg-[#5c85f1] hover:bg-[#4a72d7] transition-colors rounded text-white font-light text-[15px] cursor-pointer disabled:opacity-50 flex items-center justify-center"
+          >
+            {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+          </button>
         </div>
       </div>
     </div>

@@ -31,40 +31,39 @@ function renderLangs(item, prefix) {
 }
 
 function StatusColumn({ status, missingEpisodes, seriesId, onPublish, onUnpublish }) {
+  const linkClass = "text-gray-300 hover:text-white underline text-[15px] font-light transition-colors";
+
   if (status === 'published') {
     return (
-      <div className="w-[160px] flex flex-col items-center">
-        <div className="bg-[#C7F1C9] text-[#2d4f29] font-medium text-[13px] py-1.5 w-full text-center rounded mb-1 border border-[#b2e5b5]">
+      <div className="w-[160px] flex flex-col items-center justify-center space-y-3">
+        <div className="bg-[#C7F1C9] text-[#2d4f29] font-medium text-[15px] py-1.5 w-full text-center rounded border border-[#b2e5b5]">
           เผยแพร่แล้ว (3 วัน)
         </div>
-        <button onClick={() => onUnpublish(seriesId)} className="text-[10px] text-[#a4d7a4] hover:text-[#8ac58a] underline cursor-pointer mb-5">ยกเลิกการเผยแพร่</button>
-
-        <Link href={`/series/${seriesId}`} className="text-gray-300 hover:text-white underline text-xs font-light mb-2">รายละเอียด</Link>
-        <Link href={`/series/${seriesId}/episodes`} className="text-gray-300 hover:text-white underline text-xs font-light">จัดการตอน</Link>
+        <button onClick={() => onUnpublish(seriesId)} className="text-[#a4d7a4] hover:text-[#C7F1C9] underline font-light text-[15px] cursor-pointer transition-colors">ยกเลิกการเผยแพร่</button>
+        <Link href={`/series/${seriesId}`} className={linkClass}>รายละเอียด</Link>
+        <Link href={`/series/${seriesId}/episodes`} className={linkClass}>จัดการตอน</Link>
       </div>
     );
   } else if (status === 'ready') {
     return (
-      <div className="w-[160px] flex flex-col items-center">
-        <div className="bg-[#FAE7B5] text-[#6b5214] font-medium text-[13px] py-1.5 w-full text-center rounded mb-1 border border-[#ebd6a1]">
+      <div className="w-[160px] flex flex-col items-center justify-center space-y-3">
+        <div className="bg-[#FAE7B5] text-[#6b5214] font-medium text-[15px] py-1.5 w-full text-center rounded border border-[#ebd6a1]">
           พร้อมเผยแพร่
         </div>
-        <button onClick={() => onPublish(seriesId)} className="text-[10px] text-[#ebd6a1] hover:text-yellow-200 underline cursor-pointer mb-5 text-[#ebd6a1]">เผยแพร่ซีรีส์</button>
-
-        <Link href={`/series/${seriesId}`} className="text-gray-300 hover:text-white underline text-xs font-light mb-2">รายละเอียด</Link>
-        <Link href={`/series/${seriesId}/episodes`} className="text-gray-300 hover:text-white underline text-xs font-light">จัดการตอน</Link>
+        <button onClick={() => onPublish(seriesId)} className="text-[#ebd6a1] hover:text-[#FAE7B5] underline font-light text-[15px] cursor-pointer transition-colors">เผยแพร่ซีรีส์</button>
+        <Link href={`/series/${seriesId}`} className={linkClass}>รายละเอียด</Link>
+        <Link href={`/series/${seriesId}/episodes`} className={linkClass}>จัดการตอน</Link>
       </div>
     );
   } else {
     return (
-      <div className="w-[160px] flex flex-col items-center">
-        <div className="bg-[#FCB3B6] text-[#712025] font-medium text-[13px] py-1.5 w-full text-center rounded mb-1 border border-[#ee9f9f]">
+      <div className="w-[160px] flex flex-col items-center justify-center space-y-3">
+        <div className="bg-[#FCB3B6] text-[#712025] font-medium text-[15px] py-1.5 w-full text-center rounded border border-[#ee9f9f]">
           ยังไม่พร้อมเผยแพร่
         </div>
-        <div className="text-[10px] text-red-400 mb-5 text-center">วิดีโอไม่พร้อม {missingEpisodes} ตอน</div>
-
-        <Link href={`/series/${seriesId}`} className="text-gray-300 hover:text-white underline text-xs font-light mb-2">รายละเอียด</Link>
-        <Link href={`/series/${seriesId}/episodes`} className="text-gray-300 hover:text-white underline text-xs font-light">จัดการตอน</Link>
+        <div className="text-red-400 font-light text-[15px] text-center">วิดีโอไม่พร้อม {missingEpisodes} ตอน</div>
+        <Link href={`/series/${seriesId}`} className={linkClass}>รายละเอียด</Link>
+        <Link href={`/series/${seriesId}/episodes`} className={linkClass}>จัดการตอน</Link>
       </div>
     );
   }
@@ -78,6 +77,13 @@ export default function SeriesPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   useEffect(() => {
     async function fetchData() {
@@ -134,67 +140,83 @@ export default function SeriesPage() {
 
     // Filter by Status
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(s => s.status === statusFilter);
+      filtered = filtered.filter(s => {
+        const readyEpisodes = episodeCounts[s.id] || 0;
+        const missingEpisodes = Math.max(0, s.total_episodes - readyEpisodes);
+        let computedStatus = s.status;
+        if (s.status !== 'published') {
+          computedStatus = missingEpisodes <= 0 ? 'ready' : 'not_ready';
+        }
+        return computedStatus === statusFilter;
+      });
     }
 
     // Sort logic (Thai Alphabetical)
-    return filtered.sort((a, b) => a.title_th?.localeCompare(b.title_th, 'th'));
-  }, [series, searchTerm, statusFilter]);
+    return [...filtered].sort((a, b) => {
+      const titleA = a.title_th || '';
+      const titleB = b.title_th || '';
+      return titleA.localeCompare(titleB, 'th');
+    });
+  }, [series, searchTerm, statusFilter, episodeCounts]);
 
   return (
     <div className="w-full pb-20">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3 text-white">
-          <div className="relative w-6 h-6">
-            <Image src="/series.svg" alt="Series" fill sizes="24px" style={{ objectFit: 'contain' }} />
+      {/* Sticky Header & Filter container */}
+      <div className="sticky top-0 z-40 bg-[#110d29] pb-3 mb-3 -mx-10 px-10 before:content-[''] before:absolute before:inset-x-0 before:bottom-full before:h-[40px] before:bg-[#110d29]">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3 text-white">
+            <div className="relative w-9 h-9">
+              <Image src="/series.svg" alt="Series" fill sizes="36px" style={{ objectFit: 'contain' }} />
+            </div>
+            <h1 className="text-xl text-gray-300 font-semibold tracking-wide">ซีรีส์</h1>
           </div>
-          <h1 className="text-xl font-semibold tracking-wide">ซีรีส์</h1>
-        </div>
-        <Link
-          href="/series/create"
-          className="bg-[#5c85f1] hover:bg-[#4a72d7] transition-colors text-white px-5 py-2 rounded font-medium text-sm cursor-pointer"
-        >
-          เพิ่มซีรีส์ใหม่
-        </Link>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="bg-[#181236]/80 border border-[#2d2252] rounded-md px-5 py-3 mb-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-        <div className="text-gray-300 font-light text-[15px]">
-          ทั้งหมด {filteredSeries.length} ซีรีส์
+          <Link
+            href="/series/create"
+            className="bg-[#5c85f1] hover:bg-[#4a72d7] transition-colors text-white px-5 py-2 rounded font-medium text-sm cursor-pointer"
+          >
+            เพิ่มซีรีส์ใหม่
+          </Link>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Search Box */}
-          <div className="relative w-[240px]">
-            <input
-              type="text"
-              placeholder="ชื่อเรื่อง"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 pl-4 pr-10 bg-[#3a305d] border border-[#2d2252] rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#709bf0] placeholder-gray-400"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        {/* Filter Bar */}
+        <div className="bg-[#181236]/90 border border-[#2d2252] rounded-md px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="text-gray-300 font-light text-[15px]">
+            ทั้งหมด {filteredSeries.length} ซีรีส์
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Search Box */}
+            <div className="relative w-[240px]">
+              <input
+                type="text"
+                placeholder="ชื่อเรื่อง"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-9 pl-4 pr-10 bg-[#3a305d] border border-[#2d2252] rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#709bf0] placeholder-gray-400"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+            </div>
+
+            {/* Status Dropdown */}
+            <div className="relative w-[180px]">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full h-9 pl-4 pr-8 bg-[#3a305d] border border-[#2d2252] rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#709bf0] appearance-none cursor-pointer bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.5rem_center] bg-[length:1rem_1rem]"
+              >
+                <option value="all">ทุกประเภท</option>
+                <option value="not_ready">ยังไม่พร้อมเผยแพร่</option>
+                <option value="ready">พร้อมเผยแพร่</option>
+                <option value="published">เผยแพร่แล้ว</option>
+              </select>
             </div>
           </div>
-
-          {/* Status Dropdown */}
-          <div className="relative w-[180px]">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full h-9 pl-4 pr-8 bg-[#3a305d] border border-[#2d2252] rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#709bf0] appearance-none cursor-pointer bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.5rem_center] bg-[length:1rem_1rem]"
-            >
-              <option value="all">ทุกประเภท</option>
-              <option value="not_ready">ยังไม่พร้อมเผยแพร่</option>
-              <option value="ready">พร้อมเผยแพร่</option>
-              <option value="published">เผยแพร่แล้ว</option>
-            </select>
-          </div>
         </div>
       </div>
+      {/* End Sticky Header */}
 
       {/* Series List */}
       <div>
@@ -208,8 +230,9 @@ export default function SeriesPage() {
             {series.length === 0 ? 'ยังไม่มีซีรีส์ในระบบ กรุณาเพิ่มซีรีส์ใหม่' : 'ไม่พบซีรีส์ที่ค้นหา'}
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredSeries.map((s) => {
+          <>
+            <div className="space-y-4">
+              {filteredSeries.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((s) => {
               const readyEpisodes = episodeCounts[s.id] || 0;
               const missingEpisodes = Math.max(0, s.total_episodes - readyEpisodes);
               let computedStatus = s.status;
@@ -218,98 +241,135 @@ export default function SeriesPage() {
               }
 
               return (
-              <div key={s.id} className="bg-[#181236]/60 border border-[#2d2252] rounded-lg p-5 flex gap-6 hover:bg-[#181236]/90 transition-colors shadow-lg">
+                <div key={s.id} className="bg-[#181236]/60 border border-[#2d2252] rounded-lg p-5 flex gap-6 hover:bg-[#181236]/90 transition-colors shadow-lg">
 
-                {/* Poster */}
-                <div className="w-[100px] h-[140px] shrink-0 bg-[#0d0a1b] rounded overflow-hidden relative border border-gray-700">
-                  {s.poster_url ? (
-                    <Image src={s.poster_url} alt={s.title_th} fill sizes="100px" style={{ objectFit: 'cover' }} />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">No Image</div>
-                  )}
-                </div>
+                  {/* Poster */}
+                  <div className="w-[120px] h-[168px] shrink-0 bg-[#0d0a1b] rounded overflow-hidden relative border border-gray-700">
+                    {s.poster_url ? (
+                      <Image src={s.poster_url} alt={s.title_th} fill sizes="120px" style={{ objectFit: 'cover' }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">No Image</div>
+                    )}
+                  </div>
 
-                {/* Titles & Genres */}
-                <div className="flex-1 flex flex-col justify-between py-1">
-                  <div>
-                    <h2 className="text-[22px] font-medium text-white mb-2 leading-tight tracking-wide">{s.title_th}</h2>
-                    <div className="space-y-[2px]">
-                      {s.title_en && <div className="text-[13px] text-gray-300 font-light"><span className="text-gray-500 tracking-wider">EN:</span> {s.title_en}</div>}
-                      {s.title_jp && <div className="text-[13px] text-gray-300 font-light"><span className="text-gray-500 tracking-wider">JP:</span> {s.title_jp}</div>}
-                      {s.title_cn && <div className="text-[13px] text-gray-300 font-light"><span className="text-gray-500 tracking-wider">CN:</span> {s.title_cn}</div>}
+                  {/* Titles & Genres */}
+                  <div className="flex-1 flex flex-col justify-between py-1">
+                    <div>
+                      <h2 className="text-[22px] font-medium text-white mb-2 leading-tight tracking-wide">{s.title_th}</h2>
+                      <div className="space-y-[2px]">
+                        {s.title_en && <div className="text-[16px] text-gray-300 font-light"><span className="text-gray-500 tracking-wider">EN:</span> {s.title_en}</div>}
+                        {s.title_jp && <div className="text-[16px] text-gray-300 font-light"><span className="text-gray-500 tracking-wider">JP:</span> {s.title_jp}</div>}
+                        {s.title_cn && <div className="text-[16px] text-gray-300 font-light"><span className="text-gray-500 tracking-wider">CN:</span> {s.title_cn}</div>}
+                      </div>
+                    </div>
+
+                    {/* Genres */}
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {getGenreNames(s.genre_ids).map((genre, idx) => (
+                        <span key={idx} className="border border-gray-500 text-gray-300 text-[12px] px-3 py-1 rounded-full whitespace-nowrap">
+                          {genre}
+                        </span>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Genres */}
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {getGenreNames(s.genre_ids).map((genre, idx) => (
-                      <span key={idx} className="border border-gray-500 text-gray-300 text-[10px] px-2.5 py-0.5 rounded-full whitespace-nowrap">
-                        {genre}
-                      </span>
-                    ))}
+                  {/* Vertical Divider */}
+                  <div className="w-px bg-[#2d2252] my-1 mx-2"></div>
+
+                  {/* Statistics */}
+                  <div className="w-[230px] shrink-0 py-1 text-[16px] text-gray-300 font-light flex flex-col justify-center space-y-2">
+                    <div className="flex justify-between">
+                      <span>ทั้งหมด</span>
+                      <span>{s.total_episodes} ตอน</span>
+                    </div>
+                    {s.status === 'published' ? (
+                      <>
+                        <div className="flex justify-between">
+                          <span>ยอดวิว</span>
+                          <span className="text-white">999 ตอน</span>
+                        </div>
+                        <div className="flex justify-between pb-1">
+                          <span>ยอดซื้อ</span>
+                          <span className="text-white">300 ตอน</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between">
+                          <span>พร้อม</span>
+                          <span>{readyEpisodes} ตอน</span>
+                        </div>
+                        <div className="flex justify-between pb-1">
+                          <span>ขาด</span>
+                          <span className={missingEpisodes > 0 ? "text-red-400" : ""}>{missingEpisodes} ตอน</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span>เสียงพากย์</span>
+                      <div className="flex justify-end">{renderLangs(s, 'dub')}</div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>คำบรรยาย</span>
+                      <div className="flex justify-end">{renderLangs(s, 'sub')}</div>
+                    </div>
                   </div>
+
+                  {/* Vertical Divider */}
+                  <div className="w-px bg-[#2d2252] my-1 mx-2"></div>
+
+                  {/* Status & Actions */}
+                  <div className="w-[160px] shrink-0 py-1 flex items-center justify-center">
+                    <StatusColumn
+                      status={computedStatus}
+                      missingEpisodes={missingEpisodes}
+                      seriesId={s.id}
+                      onPublish={handlePublish}
+                      onUnpublish={handleUnpublish}
+                    />
+                  </div>
+
                 </div>
-
-                {/* Vertical Divider */}
-                <div className="w-px bg-[#2d2252] my-1 mx-2"></div>
-
-                {/* Statistics */}
-                <div className="w-[180px] shrink-0 py-1 text-[13px] text-gray-300 font-light flex flex-col justify-center space-y-2">
-                  <div className="flex justify-between">
-                    <span>ทั้งหมด</span>
-                    <span>{s.total_episodes} ตอน</span>
-                  </div>
-                  {s.status === 'published' ? (
-                    <>
-                      <div className="flex justify-between">
-                        <span>ยอดวิว</span>
-                        <span className="text-white">999 ตอน</span>
-                      </div>
-                      <div className="flex justify-between pb-1">
-                        <span>ยอดซื้อ</span>
-                        <span className="text-white">300 ตอน</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex justify-between">
-                        <span>พร้อม</span>
-                        <span>{readyEpisodes} ตอน</span>
-                      </div>
-                      <div className="flex justify-between pb-1">
-                        <span>ขาด</span>
-                        <span className={missingEpisodes > 0 ? "text-red-400" : ""}>{missingEpisodes} ตอน</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <span>เสียงพากย์</span>
-                    <div className="flex justify-end">{renderLangs(s, 'dub')}</div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>คำบรรยาย</span>
-                    <div className="flex justify-end">{renderLangs(s, 'sub')}</div>
-                  </div>
-                </div>
-
-                {/* Vertical Divider */}
-                <div className="w-px bg-[#2d2252] my-1 mx-2"></div>
-
-                {/* Status & Actions */}
-                <div className="w-[160px] shrink-0 py-1 flex items-center justify-center">
-                  <StatusColumn 
-                    status={computedStatus} 
-                    missingEpisodes={missingEpisodes} 
-                    seriesId={s.id} 
-                    onPublish={handlePublish}
-                    onUnpublish={handleUnpublish}
-                  />
-                </div>
-
-              </div>
               );
             })}
-          </div>
+            </div>
+
+            {/* Pagination Controls */}
+            {filteredSeries.length > itemsPerPage && (
+              <div className="mt-8 flex flex-col md:flex-row justify-between items-center bg-[#181236]/60 border border-[#2d2252] rounded-lg p-4 gap-4">
+                <div className="text-gray-400 text-sm">
+                  แสดง {(currentPage - 1) * itemsPerPage + 1} ถึง {Math.min(currentPage * itemsPerPage, filteredSeries.length)} จากทั้งหมด {filteredSeries.length} รายการ
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-[#2d2252] text-gray-300 rounded hover:bg-[#3a305d] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors text-sm"
+                  >
+                    ก่อนหน้า
+                  </button>
+                  <div className="flex items-center gap-1 overflow-x-auto max-w-[200px] sm:max-w-none">
+                    {Array.from({ length: Math.ceil(filteredSeries.length / itemsPerPage) }, (_, i) => (
+                      <button
+                        key={i + 1}
+                        onClick={() => setCurrentPage(i + 1)}
+                        className={`w-8 h-8 shrink-0 flex items-center justify-center rounded text-sm transition-colors cursor-pointer ${currentPage === i + 1 ? 'bg-[#709bf0] text-white cursor-default' : 'bg-[#2d2252] text-gray-300 hover:bg-[#3a305d]'}`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <button 
+                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredSeries.length / itemsPerPage), p + 1))}
+                    disabled={currentPage === Math.ceil(filteredSeries.length / itemsPerPage)}
+                    className="px-4 py-2 bg-[#2d2252] text-gray-300 rounded hover:bg-[#3a305d] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors text-sm"
+                  >
+                    ถัดไป
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

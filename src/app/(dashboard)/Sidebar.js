@@ -87,7 +87,7 @@ export default function Sidebar() {
 
           <nav className="mt-6 flex flex-col">
             {visibleMenus.map((item) => {
-              const isActive = pathname === item.path;
+              const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
 
               return (
                 <Link

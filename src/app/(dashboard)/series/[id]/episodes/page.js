@@ -64,7 +64,7 @@ function VePlayerComponent({ vid, playAuthToken }) {
 function LangBadge({ label, active }) {
   if (!active) return null;
   return (
-    <span className="border border-gray-600 text-[#d1d5db] text-[10px] w-6 h-4 rounded flex items-center justify-center font-medium opacity-80">
+    <span className="border border-gray-500 text-[#f3f4f6] text-[11px] w-8 h-5 rounded flex items-center justify-center font-medium opacity-90">
       {label}
     </span>
   );
@@ -73,7 +73,7 @@ function LangBadge({ label, active }) {
 function LangPrefix({ label, active }) {
   if (!active) return null;
   return (
-    <span className="w-8 h-5 border border-gray-500 rounded flex items-center justify-center text-[10px] text-gray-300 tracking-wider mr-2 shrink-0">
+    <span className="w-9 h-6 border border-gray-500 rounded flex items-center justify-center text-[11px] text-gray-300 tracking-wider mr-3 shrink-0">
       {label}
     </span>
   );
@@ -140,6 +140,20 @@ export default function EpisodesPage() {
   const [playAuthToken, setPlayAuthToken] = useState(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
 
+  // Notification State
+  const [errorMsg, setErrorMsg] = useState('');
+  const [errorVisible, setErrorVisible] = useState(false);
+  const errorTimeoutRef = useRef(null);
+
+  const showError = (msg) => {
+    setErrorMsg(msg);
+    setErrorVisible(true);
+    if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+    errorTimeoutRef.current = setTimeout(() => {
+      setErrorVisible(false);
+    }, 4000);
+  };
+
   const closeVideoModal = () => {
     setPlayingVid(null);
     setPlayAuthToken(null);
@@ -197,6 +211,11 @@ export default function EpisodesPage() {
   };
 
   const saveEpisode = async () => {
+    if (!videoLink || !videoLink.trim()) {
+      showError('กรุณากรอก vid');
+      return;
+    }
+
     setIsSaving(true);
     const payload = {
       series_id: seriesId,
@@ -275,25 +294,43 @@ export default function EpisodesPage() {
   const episodes = Array.from({ length: series.total_episodes }, (_, i) => i + 1);
 
   return (
-    <div className="w-full pb-20">
-      {/* Header */}
-      <div className="flex items-center mb-8 text-white">
-        <div className="relative w-6 h-6 mr-3">
-          <Image src="/series.svg" alt="Series" fill sizes="24px" style={{ objectFit: 'contain' }} />
+    <div className="w-full pb-20 relative">
+      {/* Error Notification */}
+      <div 
+        className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 ease-out ${errorVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}
+        style={{ display: errorMsg ? 'block' : 'none' }}
+      >
+        <div className="bg-[#D24949] text-white px-6 py-3.5 rounded shadow-2xl flex items-center space-x-4 w-max min-w-[300px]">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L22 20H2L12 2ZM11 16V18H13V16H11ZM11 10V14H13V10H11Z" />
+          </svg>
+          <span className="font-medium tracking-wide">{errorMsg}</span>
         </div>
-        <h1 className="text-xl font-semibold tracking-wide flex items-center gap-2">
-          <Link href="/series" className="hover:text-gray-300 transition-colors underline underline-offset-4">ซีรีส์</Link>
-          <span className="text-gray-300 font-light">&gt;</span>
-          <span className="text-gray-200 font-light">จัดการตอน</span>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center space-x-3 mb-8 text-white">
+        <div className="relative w-9 h-9">
+          <Image src="/series.svg" alt="Series" fill sizes="36px" style={{ objectFit: 'contain' }} />
+        </div>
+        <h1 className="text-xl text-gray-300 font-semibold tracking-wide flex items-center gap-2 truncate">
+          <Link href="/series" className="hover:text-white transition-colors underline underline-offset-4 shrink-0">ซีรีส์</Link>
+          <span className="text-gray-500 font-light text-[15px] shrink-0">&gt;</span>
+          <Link href={`/series/${seriesId}`} className="hover:text-white transition-colors underline underline-offset-4 truncate" title={series.title_th}>
+            {series.title_th}
+          </Link>
+          <span className="text-gray-500 font-light text-[15px] shrink-0">&gt;</span>
+          <span className="text-white font-light shrink-0">จัดการตอน</span>
         </h1>
       </div>
 
-      {/* Info Card */}
-      <div className="mb-8 flex gap-8">
+      <div className="bg-[#181236]/70 border border-[#2d2252] rounded-lg p-8 shadow-lg space-y-8">
+        {/* Info Card */}
+        <div className="flex gap-8">
         {/* Poster */}
-        <div className="w-[140px] h-[196px] shrink-0 bg-[#0d0a1b] rounded overflow-hidden relative border border-gray-700 shadow-lg">
+        <div className="w-[200px] h-[280px] shrink-0 bg-[#0d0a1b] rounded overflow-hidden relative border border-gray-700 shadow-lg">
           {series.poster_url ? (
-             <Image src={series.poster_url} alt={series.title_th} fill sizes="140px" style={{ objectFit: 'cover' }} />
+             <Image src={series.poster_url} alt={series.title_th} fill sizes="200px" style={{ objectFit: 'cover' }} />
           ) : (
              <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">No Image</div>
           )}
@@ -301,55 +338,52 @@ export default function EpisodesPage() {
         
         {/* Details */}
         <div className="flex-1 flex flex-col pt-1">
-          <div className="space-y-1 mb-4">
-            <div className="flex items-center text-[15px] text-white tracking-wide">
+          <div className="space-y-2 mb-6">
+            <div className="flex items-center text-xl text-white tracking-wide font-medium">
               <LangPrefix label="TH" active={true} />
               {series.title_th}
             </div>
             {series.title_en && (
-              <div className="flex items-center text-[13px] text-gray-300 font-light">
+              <div className="flex items-center text-[15px] text-gray-300 font-light">
                 <LangPrefix label="EN" active={true} />
                 {series.title_en}
               </div>
             )}
             {series.title_jp && (
-              <div className="flex items-center text-[13px] text-gray-300 font-light">
+              <div className="flex items-center text-[15px] text-gray-300 font-light">
                 <LangPrefix label="JP" active={true} />
                 {series.title_jp}
               </div>
             )}
             {series.title_cn && (
-              <div className="flex items-center text-[13px] text-gray-300 font-light">
+              <div className="flex items-center text-[15px] text-gray-300 font-light">
                 <LangPrefix label="CN" active={true} />
                 {series.title_cn}
               </div>
             )}
           </div>
           
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-6">
             {genreNames.map((name, idx) => (
-              <span key={idx} className="border border-gray-600 text-gray-300 text-[11px] px-2.5 py-0.5 rounded-sm">
+              <span key={idx} className="border border-gray-500 text-gray-200 text-[13px] px-3 py-1 rounded-md">
                 {name}
               </span>
             ))}
           </div>
           
-          <div className="text-[13px] text-gray-300 font-light mb-3">
-             ทั้งหมด {series.total_episodes} ตอน
-          </div>
-          
-          <div className="space-y-1.5 flex flex-col">
-             <div className="flex items-center text-[13px] text-gray-300 font-light space-x-3">
-                <span className="w-16">เสียงพากย์</span>
-                <div className="flex space-x-1">
+
+          <div className="space-y-3 flex flex-col">
+             <div className="flex items-center text-[15px] text-gray-300 font-light space-x-3">
+                <span className="w-20">เสียงพากย์</span>
+                <div className="flex space-x-2">
                    {['th', 'en', 'jp', 'cn'].map(lang => (
                      <LangBadge key={lang} label={lang.toUpperCase()} active={series[`dub_${lang}`]} />
                    ))}
                 </div>
              </div>
-             <div className="flex items-center text-[13px] text-gray-300 font-light space-x-3">
-                <span className="w-16">บรรยาย</span>
-                <div className="flex space-x-1">
+             <div className="flex items-center text-[15px] text-gray-300 font-light space-x-3">
+                <span className="w-20">บรรยาย</span>
+                <div className="flex space-x-2">
                    {['th', 'en', 'jp', 'cn'].map(lang => (
                      <LangBadge key={lang} label={lang.toUpperCase()} active={series[`sub_${lang}`]} />
                    ))}
@@ -395,7 +429,7 @@ export default function EpisodesPage() {
                     <td className="py-3 text-center">
                       <div className="flex justify-center items-center">
                         {savedEp.video_url ? (
-                          <button onClick={() => playVideo(savedEp.video_url)} className="text-[#a1a1aa] hover:text-white transition-colors cursor-pointer outline-none">
+                          <button onClick={() => playVideo(savedEp.video_url)} className="text-green-500 hover:text-green-400 transition-colors cursor-pointer outline-none">
                             <PlayIcon />
                           </button>
                         ) : (
@@ -446,49 +480,49 @@ export default function EpisodesPage() {
           </tbody>
         </table>
       </div>
+    </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#12102f] border border-[#2d2252] w-full max-w-[420px] rounded-xl shadow-2xl overflow-hidden flex flex-col relative text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm backdrop-grayscale">
+          <div className="bg-[#12102f] border border-[#2d2252] w-full max-w-[500px] rounded-xl shadow-2xl overflow-hidden flex flex-col relative text-white">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2d2252]">
-              <h2 className="text-lg font-medium tracking-wide">เพิ่มวิดีโอ</h2>
-              <button onClick={closeModal} className="text-gray-300 hover:text-white transition-colors">
-                <XIcon />
-              </button>
+            <div className="flex items-center justify-center px-6 py-4 border-b border-[#2d2252] relative">
+              <h2 className="text-lg font-medium tracking-wide">
+                {savedEpisodes.some(e => e.episode_no === selectedEpisode) ? 'แก้ไขวีดีโอ' : 'เพิ่มวีดีโอ'}
+              </h2>
             </div>
 
             {/* Modal Body */}
             <div className="p-6">
-              <div className="flex gap-4 mb-6">
-                <div className="w-[80px] h-[112px] shrink-0 bg-[#0d0a1b] rounded overflow-hidden relative border border-gray-700 shadow">
+              <div className="flex gap-5 mb-6">
+                <div className="w-[100px] h-[140px] shrink-0 bg-[#0d0a1b] rounded overflow-hidden relative border border-gray-700 shadow">
                   {series.poster_url ? (
-                    <Image src={series.poster_url} alt={series.title_th} fill sizes="80px" style={{ objectFit: 'cover' }} />
+                    <Image src={series.poster_url} alt={series.title_th} fill sizes="100px" style={{ objectFit: 'cover' }} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-600 text-[10px]">No Image</div>
                   )}
                 </div>
-                <div className="flex-1 flex flex-col justify-center space-y-1.5">
-                  <div className="flex items-center text-[14px]">
+                <div className="flex-1 flex flex-col justify-center space-y-2">
+                  <div className="flex items-center text-[16px] font-medium">
                     <LangPrefix label="TH" active={true} />
                     <span className="line-clamp-1 break-all">{series.title_th}</span>
                   </div>
                   {series.title_en && (
-                    <div className="flex items-center text-[12px] text-gray-300">
+                    <div className="flex items-center text-[14px] text-gray-300">
                       <LangPrefix label="EN" active={true} />
                       <span className="line-clamp-1 break-all">{series.title_en}</span>
                     </div>
                   )}
                   {series.title_jp && (
-                    <div className="flex items-center text-[12px] text-gray-300">
+                    <div className="flex items-center text-[14px] text-gray-300">
                       <LangPrefix label="JP" active={true} />
                       <span className="line-clamp-1 break-all">{series.title_jp}</span>
                     </div>
                   )}
                   {series.title_cn && (
-                    <div className="flex items-center text-[12px] text-gray-300">
+                    <div className="flex items-center text-[14px] text-gray-300">
                       <LangPrefix label="CN" active={true} />
                       <span className="line-clamp-1 break-all">{series.title_cn}</span>
                     </div>
@@ -504,7 +538,7 @@ export default function EpisodesPage() {
               {/* Form Fields */}
               <div className="space-y-4">
                 <div className="flex items-center">
-                   <label className="w-24 text-[13px] text-gray-300">ลิงก์วิดีโอ</label>
+                   <label className="w-24 text-[13px] text-gray-300">vid</label>
                    <input
                      type="text"
                      value={videoLink}
@@ -514,22 +548,41 @@ export default function EpisodesPage() {
                 </div>
                 <div className="flex items-center pb-2">
                    <label className="w-24 text-[13px] text-gray-300">สถานะ</label>
-                   <label className="flex items-center cursor-pointer space-x-2">
-                     <input
-                       type="checkbox"
-                       checked={isFree}
-                       onChange={(e) => setIsFree(e.target.checked)}
-                       className="w-4 h-4 bg-transparent border-gray-500 rounded cursor-pointer"
-                     />
-                     <span className="text-[13px] text-gray-300">ฟรี</span>
-                   </label>
+                   <div className="flex items-center space-x-6">
+                     <label className="flex items-center cursor-pointer space-x-2">
+                       <input
+                         type="radio"
+                         name="status"
+                         checked={!isFree}
+                         onChange={() => setIsFree(false)}
+                         className="w-4 h-4 bg-transparent border-gray-500 cursor-pointer accent-[#5c67f2]"
+                       />
+                       <span className="text-[13px] text-gray-300">จ่ายเงิน</span>
+                     </label>
+                     <label className="flex items-center cursor-pointer space-x-2">
+                       <input
+                         type="radio"
+                         name="status"
+                         checked={isFree}
+                         onChange={() => setIsFree(true)}
+                         className="w-4 h-4 bg-transparent border-gray-500 cursor-pointer accent-[#5c67f2]"
+                       />
+                       <span className="text-[13px] text-gray-300">ฟรี</span>
+                     </label>
+                   </div>
                 </div>
 
-                <div className="flex justify-center pt-2">
+                <div className="flex justify-center pt-2 gap-4">
+                  <button
+                    onClick={closeModal}
+                    className="px-8 py-2 border border-gray-600 hover:bg-white/5 text-white rounded-md transition-colors text-[14px] cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
                   <button
                     onClick={saveEpisode}
                     disabled={isSaving}
-                    className="bg-[#5c67f2] hover:bg-[#4a54c4] text-white px-10 py-2 rounded-md transition-colors disabled:opacity-50 text-[14px]"
+                    className="px-8 py-2 bg-[#5c67f2] hover:bg-[#4a54c4] text-white rounded-md transition-colors disabled:opacity-50 text-[14px] cursor-pointer"
                   >
                     {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
                   </button>
@@ -542,18 +595,22 @@ export default function EpisodesPage() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm backdrop-grayscale">
           <div className="bg-[#12102f] border border-[#2d2252] w-full max-w-[400px] rounded-xl shadow-2xl overflow-hidden flex flex-col relative text-white">
             <div className="flex flex-col items-center justify-center p-8 space-y-4">
-              <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-2 border border-red-500/20">
-                <TrashIcon />
-              </div>
               <h2 className="text-xl font-medium text-center tracking-wide">ยืนยันการลบ</h2>
               <p className="text-[13px] text-gray-300 text-center leading-relaxed">
                 คุณแน่ใจหรือไม่ว่าต้องการลบวิดีโอตอนที่ <span className="text-white font-medium">{episodeToDelete}</span>? <br/>
                 หากลบแล้วจะไม่สามารถกู้คืนข้อมูลของตอนนี้ได้
               </p>
               <div className="flex w-full space-x-4 pt-6">
+                <button
+                  onClick={confirmDeleteEpisode}
+                  disabled={isDeleting}
+                  className="flex-1 bg-[#D24949] hover:bg-red-500 text-white px-4 py-2.5 rounded-md transition-colors disabled:opacity-50 text-[14px]"
+                >
+                  {isDeleting ? 'กำลังลบ...' : 'ลบข้อมูล'}
+                </button>
                 <button
                   onClick={() => {
                     setShowDeleteModal(false);
@@ -564,13 +621,6 @@ export default function EpisodesPage() {
                 >
                   ยกเลิก
                 </button>
-                <button
-                  onClick={confirmDeleteEpisode}
-                  disabled={isDeleting}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-md transition-colors disabled:opacity-50 text-[14px]"
-                >
-                  {isDeleting ? 'กำลังลบ...' : 'ลบข้อมูล'}
-                </button>
               </div>
             </div>
           </div>
@@ -579,7 +629,7 @@ export default function EpisodesPage() {
 
       {/* Video Player Modal */}
       {playingVid && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 backdrop-blur-md">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 backdrop-blur-md backdrop-grayscale">
            <button onClick={closeVideoModal} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-[80] outline-none">
              <div className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
                <XIcon />
