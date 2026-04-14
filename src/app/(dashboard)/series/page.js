@@ -36,10 +36,11 @@ function StatusColumn({ status, missingEpisodes, seriesId, onPublish, onUnpublis
   if (status === 'published') {
     return (
       <div className="w-[160px] flex flex-col items-center justify-center space-y-3">
-        <div className="bg-[#C7F1C9] text-[#2d4f29] font-medium text-[15px] py-1.5 w-full text-center rounded border border-[#b2e5b5]">
-          เผยแพร่แล้ว (3 วัน)
+        <div className="border border-[#5BE05B] text-[#5BE05B] font-semibold text-[15px] py-[6px] w-full flex items-center justify-center gap-2 rounded-md tracking-wide">
+          <Image src="/onair.svg" alt="Published" width={22} height={22} />
+          <span>เผยแพร่แล้ว</span>
         </div>
-        <button onClick={() => onUnpublish(seriesId)} className="text-[#a4d7a4] hover:text-[#C7F1C9] underline font-light text-[15px] cursor-pointer transition-colors">ยกเลิกการเผยแพร่</button>
+        <button onClick={() => onUnpublish(seriesId)} className="text-gray-300 hover:text-white underline font-light text-[15px] cursor-pointer transition-colors">ยกเลิกการเผยแพร่</button>
         <Link href={`/series/${seriesId}`} className={linkClass}>รายละเอียด</Link>
         <Link href={`/series/${seriesId}/episodes`} className={linkClass}>จัดการตอน</Link>
       </div>
@@ -47,10 +48,11 @@ function StatusColumn({ status, missingEpisodes, seriesId, onPublish, onUnpublis
   } else if (status === 'ready') {
     return (
       <div className="w-[160px] flex flex-col items-center justify-center space-y-3">
-        <div className="bg-[#FAE7B5] text-[#6b5214] font-medium text-[15px] py-1.5 w-full text-center rounded border border-[#ebd6a1]">
-          พร้อมเผยแพร่
+        <div className="border border-[#FDE047] text-[#FDE047] font-semibold text-[15px] py-[6px] w-full flex items-center justify-center gap-2 rounded-md tracking-wide">
+          <Image src="/ready.svg" alt="Ready" width={22} height={22} />
+          <span>พร้อมเผยแพร่</span>
         </div>
-        <button onClick={() => onPublish(seriesId)} className="text-[#ebd6a1] hover:text-[#FAE7B5] underline font-light text-[15px] cursor-pointer transition-colors">เผยแพร่ซีรีส์</button>
+        <button onClick={() => onPublish(seriesId)} className="text-gray-300 hover:text-white underline font-light text-[15px] cursor-pointer transition-colors">เผยแพร่ซีรีส์</button>
         <Link href={`/series/${seriesId}`} className={linkClass}>รายละเอียด</Link>
         <Link href={`/series/${seriesId}/episodes`} className={linkClass}>จัดการตอน</Link>
       </div>
@@ -58,10 +60,11 @@ function StatusColumn({ status, missingEpisodes, seriesId, onPublish, onUnpublis
   } else {
     return (
       <div className="w-[160px] flex flex-col items-center justify-center space-y-3">
-        <div className="bg-[#FCB3B6] text-[#712025] font-medium text-[15px] py-1.5 w-full text-center rounded border border-[#ee9f9f]">
-          ยังไม่พร้อมเผยแพร่
+        <div className="border border-[#F95050] text-[#F95050] font-semibold text-[15px] py-[6px] w-full flex items-center justify-center gap-2 rounded-md tracking-wide">
+          <Image src="/notready.svg" alt="Not Ready" width={22} height={22} />
+          <span>ไม่พร้อมเผยแพร่</span>
         </div>
-        <div className="text-red-400 font-light text-[15px] text-center">วิดีโอไม่พร้อม {missingEpisodes} ตอน</div>
+        <div className="text-[#F95050] font-light text-[15px] text-center">ขาดวีดีโอ {missingEpisodes} ตอน</div>
         <Link href={`/series/${seriesId}`} className={linkClass}>รายละเอียด</Link>
         <Link href={`/series/${seriesId}/episodes`} className={linkClass}>จัดการตอน</Link>
       </div>
@@ -319,10 +322,17 @@ export default function SeriesPage() {
 
                   {/* Statistics */}
                   <div className="w-[230px] shrink-0 py-1 text-[16px] text-gray-300 font-light flex flex-col justify-center space-y-2">
-                    <div className="flex justify-between">
-                      <span>ทั้งหมด</span>
-                      <span>{s.total_episodes} ตอน</span>
-                    </div>
+                    {s.status === 'published' ? (
+                      <div className="flex justify-between">
+                        <span>เผยแพร่</span>
+                        <span>3 วัน</span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between">
+                        <span>ทั้งหมด</span>
+                        <span>{s.total_episodes} ตอน</span>
+                      </div>
+                    )}
                     {s.status === 'published' ? (
                       <>
                         <div className="flex justify-between">
@@ -342,7 +352,7 @@ export default function SeriesPage() {
                         </div>
                         <div className="flex justify-between pb-1">
                           <span>ขาด</span>
-                          <span className={missingEpisodes > 0 ? "text-red-400" : ""}>{missingEpisodes} ตอน</span>
+                          <span className={missingEpisodes > 0 ? "text-[#F95050]" : ""}>{missingEpisodes} ตอน</span>
                         </div>
                       </>
                     )}

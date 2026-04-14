@@ -60,7 +60,7 @@ export default function Home() {
       <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out ${errorVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}>
         <div className="bg-[#D24949] text-white px-6 py-3.5 rounded shadow-2xl flex items-center space-x-4 w-max min-w-[300px]">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L22 20H2L12 2ZM11 16V18H13V16H11ZM11 10V14H13V10H11Z"/>
+            <path d="M12 2L22 20H2L12 2ZM11 16V18H13V16H11ZM11 10V14H13V10H11Z" />
           </svg>
           <span className="font-medium tracking-wide">{error}</span>
         </div>
@@ -80,8 +80,8 @@ export default function Home() {
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">ไม่รองรับการใช้งานบนอุปกรณ์นี้</h1>
           <p className="text-gray-300 font-light mb-8">กรุณาเข้าใช้งานผ่านคอมพิวเตอร์ (PC) เท่านั้น</p>
-          <a 
-            href="https://www.minchapseries.com" 
+          <a
+            href="https://www.minchapseries.com"
             className="px-6 py-2.5 bg-[#6a90f1] hover:bg-[#567ce2] transition-colors rounded text-white font-medium text-[15px]"
           >
             กลับสู่หน้าหลัก
@@ -182,7 +182,7 @@ export default function Home() {
 
         {/* Version String bottom right */}
         <div className="absolute bottom-6 right-8 text-sm text-gray-300 font-light">
-          v0.01.00
+          v0.01.01
         </div>
       </div>
     </>

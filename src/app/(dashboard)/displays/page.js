@@ -33,7 +33,7 @@ function BannerEditModal({ isOpen, onClose, bannerIndex, seriesList, onSave, isS
       <div className="bg-[#12102f] border border-[#2d2252] rounded-xl w-full max-w-[620px] shadow-2xl p-8 py-10 relative">
         <h2 className="text-2xl font-semibold text-white text-center mb-8 tracking-wide flex items-center justify-center gap-3">
           แบนเนอร์ 
-          <span className="w-9 h-9 rounded-full bg-[#52417e] text-white flex items-center justify-center text-[18px] font-medium shadow-md">
+          <span className="w-9 h-9 rounded-full bg-[#544081] text-white flex items-center justify-center text-[18px] font-medium shadow-md">
             {bannerIndex}
           </span>
         </h2>
@@ -240,10 +240,15 @@ export default function DisplaysPage() {
                        {/* Placeholder Card */}
                        <div 
                          onClick={() => setEditingBanner(item)}
-                         className="w-full flex flex-col rounded-md relative cursor-pointer overflow-hidden border border-transparent hover:border-[#5c85f1]/50 shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_16px_rgba(92,133,241,0.2)] transition-shadow"
+                         className={`w-full flex flex-col rounded-md relative cursor-pointer overflow-hidden ${item === 3 ? 'border-[5px] border-[#362375]' : 'border-[5px] border-transparent hover:border-[#5c85f1]/50'} shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_16px_rgba(92,133,241,0.2)] transition-all`}
                        >
+                         {item === 3 && (
+                           <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-[#362375] text-white px-6 py-1 rounded-b-lg text-[16px] font-medium z-30 tracking-wide">
+                             กลางจอ
+                           </div>
+                         )}
                          {/* Number Badge (Always Top Right) */}
-                         <div className="absolute top-3 right-3 w-[34px] h-[34px] rounded-full bg-[#52417e] text-white flex items-center justify-center text-[15px] font-medium shadow-md z-20">
+                         <div className="absolute top-3 right-3 w-[34px] h-[34px] rounded-full bg-[#544081] text-white flex items-center justify-center text-[15px] font-medium shadow-md z-20">
                            {item}
                          </div>
 
