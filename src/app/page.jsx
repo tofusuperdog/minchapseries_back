@@ -182,7 +182,7 @@ export default function Home() {
 
         {/* Version String bottom right */}
         <div className="absolute bottom-6 right-8 text-sm text-gray-300 font-light">
-          v0.01.01
+          v0.01.03
         </div>
       </div>
     </>

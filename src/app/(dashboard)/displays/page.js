@@ -182,14 +182,14 @@ function DubbedLanguageModal({ isOpen, onClose, dubbedLanguages, onToggleLanguag
 }
 
 function AddCategoryModal({ isOpen, onClose, onSave, isSaving }) {
-  const [name, setName] = useState('');
+  const [names, setNames] = useState({ th: '', en: '', jp: '', cn: '' });
   const [error, setError] = useState('');
   const [errorVisible, setErrorVisible] = useState(false);
   const errorTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
-      setName('');
+      setNames({ th: '', en: '', jp: '', cn: '' });
       setErrorVisible(false);
     }
   }, [isOpen]);
@@ -204,18 +204,25 @@ function AddCategoryModal({ isOpen, onClose, onSave, isSaving }) {
   };
 
   const handleSave = () => {
-    if (!name.trim()) {
-      showErrorMsg('กรุณากรอกชื่อหมวดคอนเทนต์');
+    if (!names.th.trim() || !names.en.trim() || !names.jp.trim() || !names.cn.trim()) {
+      showErrorMsg('กรุณากรอกข้อมูลให้ครบทั้ง 4 ภาษา');
       return;
     }
-    onSave(name);
+    onSave(names);
   };
 
   if (!isOpen) return null;
 
+  const languages = [
+    { code: 'th', label: 'TH' },
+    { code: 'en', label: 'EN' },
+    { code: 'jp', label: 'JP' },
+    { code: 'cn', label: 'CN' },
+  ];
+
   return (
     <>
-      <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[70] transition-all duration-500 ease-out ${errorVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}>
+      <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 ease-out ${errorVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}>
         <div className="bg-[#D24949] text-white px-6 py-3.5 rounded shadow-2xl flex items-center space-x-4 w-max min-w-[300px]">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2L22 20H2L12 2ZM11 16V18H13V16H11ZM11 10V14H13V10H11Z" />
@@ -225,24 +232,34 @@ function AddCategoryModal({ isOpen, onClose, onSave, isSaving }) {
       </div>
 
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-[2px] backdrop-grayscale">
-        <div className="bg-[#16132e] border border-[#3b2b64] rounded-xl w-full max-w-[500px] shadow-2xl p-8 py-10 relative">
+        <div className="bg-[#121633] border border-[#2d2252] rounded-xl w-full max-w-[500px] shadow-2xl p-8 py-10 relative">
           <h2 className="text-xl font-medium text-white text-center mb-8 tracking-wide">
             เพิ่มหมวดคอนเทนต์
           </h2>
 
           <div className="px-2">
-            <span className="block text-[15px] font-light text-gray-300 mb-2">ชื่อหมวดคอนเทนต์</span>
+            <span className="block text-[15px] font-light text-gray-300 mb-4">ชื่อหมวดคอนเทนต์</span>
             
-            <input 
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setErrorVisible(false);
-              }}
-              disabled={isSaving}
-              className="w-full h-11 px-4 bg-white rounded text-black font-medium text-[15px] focus:outline-none focus:ring-2 focus:ring-[#709bf0] mb-10"
-            />
+            <div className="space-y-4 mb-10">
+              {languages.map((lang) => (
+                <div key={lang.code} className="flex items-center gap-4">
+                  <div className="w-[45px] h-[34px] border border-gray-500 rounded flex items-center justify-center text-[13px] font-medium text-gray-300 bg-white/5 shrink-0">
+                    {lang.label}
+                  </div>
+                  <input 
+                    type="text"
+                    value={names[lang.code]}
+                    onChange={(e) => {
+                      setNames(prev => ({ ...prev, [lang.code]: e.target.value }));
+                      setErrorVisible(false);
+                    }}
+                    disabled={isSaving}
+                    placeholder={`ระบุภาษา ${lang.label}`}
+                    className="flex-1 h-11 px-4 bg-white rounded text-black font-medium text-[15px] focus:outline-none focus:ring-2 focus:ring-[#709bf0]"
+                  />
+                </div>
+              ))}
+            </div>
 
             <div className="flex justify-center gap-4 mt-2">
               <button
@@ -266,6 +283,7 @@ function AddCategoryModal({ isOpen, onClose, onSave, isSaving }) {
     </>
   );
 }
+
 
 function CategoryDeleteModal({ category, isOpen, onClose, onConfirm, isSaving }) {
   const [num1, setNum1] = useState(0);
@@ -334,7 +352,7 @@ function CategoryDeleteModal({ category, isOpen, onClose, onConfirm, isSaving })
 }
 
 function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) {
-  const [name, setName] = useState('');
+  const [names, setNames] = useState({ th: '', en: '', jp: '', cn: '' });
   const [selectedIds, setSelectedIds] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -352,7 +370,12 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
 
   useEffect(() => {
     if (category) {
-      setName(category.name || '');
+      setNames({
+        th: category.name_th || category.name || '',
+        en: category.name_en || '',
+        jp: category.name_jp || '',
+        cn: category.name_cn || '',
+      });
       setSelectedIds(category.series_ids || []);
       setErrorVisible(false);
     }
@@ -367,8 +390,8 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
   };
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      showErrorMsg('กรุณากรอกชื่อหมวดคอนเทนต์');
+    if (!names.th.trim() || !names.en.trim() || !names.jp.trim() || !names.cn.trim()) {
+      showErrorMsg('กรุณากรอกข้อมูลให้ครบทั้ง 4 ภาษา');
       return;
     }
     if (selectedIds.length < 6) {
@@ -378,16 +401,25 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
     
     setIsSaving(true);
     const newBadgeText = `${selectedIds.length} ซีรีส์`;
-    const { error } = await supabase
+    const { error: dbError } = await supabase
       .from('content_categories')
-      .update({ name: name.trim(), series_ids: selectedIds, badge_text: newBadgeText, updated_at: new Date().toISOString() })
+      .update({ 
+        name: names.th.trim(), // Keep name as name_th for compatibility
+        name_th: names.th.trim(),
+        name_en: names.en.trim(),
+        name_jp: names.jp.trim(),
+        name_cn: names.cn.trim(),
+        series_ids: selectedIds, 
+        badge_text: newBadgeText, 
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', category.id);
       
     setIsSaving(false);
-    if (error) {
+    if (dbError) {
       showErrorMsg('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } else {
-      onSave(category.id, name.trim(), selectedIds, newBadgeText);
+      onSave(category.id, names, selectedIds, newBadgeText);
     }
   };
 
@@ -397,13 +429,13 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
 
   const handleConfirmDelete = async () => {
     setIsSaving(true);
-    const { error } = await supabase
+    const { error: dbError } = await supabase
       .from('content_categories')
       .delete()
       .eq('id', category.id);
     setIsSaving(false);
     
-    if (error) {
+    if (dbError) {
       showErrorMsg('เกิดข้อผิดพลาดในการลบข้อมูล');
       setIsDeleteModalOpen(false);
     } else {
@@ -412,9 +444,16 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
     }
   };
 
+  const languages = [
+    { code: 'th', label: 'TH' },
+    { code: 'en', label: 'EN' },
+    { code: 'jp', label: 'JP' },
+    { code: 'cn', label: 'CN' },
+  ];
+
   return (
     <>
-      <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[70] transition-all duration-500 ease-out ${errorVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}>
+      <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 ease-out ${errorVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}>
         <div className="bg-[#D24949] text-white px-6 py-3.5 rounded shadow-2xl flex items-center space-x-4 w-max min-w-[300px]">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2L22 20H2L12 2ZM11 16V18H13V16H11ZM11 10V14H13V10H11Z" />
@@ -424,24 +463,33 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
       </div>
 
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-[2px]">
-        <div className="bg-[#12102f] border border-[#3b2b64] rounded-xl w-full max-w-[600px] shadow-2xl p-8 relative flex flex-col max-h-[90vh]">
+        <div className="bg-[#121633] border border-[#3b2b64] rounded-xl w-full max-w-[650px] shadow-2xl p-8 relative flex flex-col max-h-[90vh]">
           <h2 className="text-[20px] font-medium text-white text-center mb-6 tracking-wide">แก้ไขหมวดคอนเทนต์</h2>
 
           <div className="mb-6 px-1">
-             <span className="block text-[14px] font-light text-gray-300 mb-2">ชื่อหมวดคอนเทนต์</span>
-             <input 
-               type="text"
-               value={name}
-               onChange={(e) => {
-                 setName(e.target.value);
-                 setErrorVisible(false);
-               }}
-               disabled={isSaving}
-               className="w-full h-[42px] px-4 bg-[#dadada] rounded text-[#222] font-medium text-[15px] focus:outline-none focus:ring-2 focus:ring-[#5c85f1]"
-             />
+             <span className="block text-[14px] font-light text-gray-300 mb-4">ชื่อหมวดคอนเทนต์</span>
+             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+               {languages.map((lang) => (
+                 <div key={lang.code} className="flex items-center gap-3">
+                   <div className="w-[38px] h-[30px] border border-gray-600 rounded flex items-center justify-center text-[11px] font-medium text-gray-400 bg-white/5 shrink-0">
+                     {lang.label}
+                   </div>
+                   <input 
+                     type="text"
+                     value={names[lang.code]}
+                     onChange={(e) => {
+                       setNames(prev => ({ ...prev, [lang.code]: e.target.value }));
+                       setErrorVisible(false);
+                     }}
+                     disabled={isSaving}
+                     className="flex-1 h-[38px] px-3 bg-[#dadada] rounded text-[#222] font-medium text-[14px] focus:outline-none focus:ring-2 focus:ring-[#5c85f1]"
+                   />
+                 </div>
+               ))}
+             </div>
           </div>
 
-          <div className="flex-1 flex flex-col overflow-hidden px-1 min-h-[300px]">
+          <div className="flex-1 flex flex-col overflow-hidden px-1 min-h-[250px]">
             <div className="flex justify-between items-center mb-2">
               <span className="text-[15px] text-white font-medium">รายชื่อซีรีส์ที่เลือก</span>
               <span className="text-[13px] text-gray-400 font-light">ซีรีส์ที่ถูกเลือก {selectedIds.length} ซีรีส์</span>
@@ -497,7 +545,7 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
       </div>
 
       <CategoryDeleteModal 
-        category={category}
+        category={{...category, name: names.th}}
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
@@ -506,6 +554,7 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
     </>
   );
 }
+
 
 function TopSeriesModal({ isOpen, onClose, seriesList }) {
   const [loading, setLoading] = useState(true);
@@ -800,10 +849,19 @@ export default function DisplaysPage() {
     pageErrorTimeoutRef.current = setTimeout(() => setPageErrorVisible(false), 4000);
   };
 
-  const handleSaveCategoryEdit = (id, newName, selectedIds, newBadgeText) => {
+  const handleSaveCategoryEdit = (id, newNames, selectedIds, newBadgeText) => {
     setContentCategories(prev => prev.map(c => 
       c.id === id 
-        ? { ...c, name: newName, series_ids: selectedIds, badge_text: newBadgeText } 
+        ? { 
+            ...c, 
+            name: newNames.th.trim(),
+            name_th: newNames.th.trim(),
+            name_en: newNames.en.trim(),
+            name_jp: newNames.jp.trim(),
+            name_cn: newNames.cn.trim(),
+            series_ids: selectedIds, 
+            badge_text: newBadgeText 
+          } 
         : c
     ));
     setEditingCategory(null);
@@ -983,12 +1041,15 @@ export default function DisplaysPage() {
     e.preventDefault(); // Necessary to allow dropping
   };
 
-  const handleAddCategory = async (name) => {
-    if (!name.trim()) return;
+  const handleAddCategory = async (names) => {
     setIsSavingCategory(true);
 
     const newCategoryObj = {
-      name: name.trim(),
+      name: names.th.trim(),
+      name_th: names.th.trim(),
+      name_en: names.en.trim(),
+      name_jp: names.jp.trim(),
+      name_cn: names.cn.trim(),
       badge_text: '0 ซีรีส์',
       is_published: false,
       sort_order: 1 // Temporarily, will be recalculated
@@ -1194,16 +1255,41 @@ export default function DisplaysPage() {
                         ${dragOverIndex === idx && draggedIndex !== idx ? 'border-t-2 border-t-[#5c85f1] scale-[1.01]' : ''}
                       `}
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 py-1.5 flex-1 min-w-0">
                         {/* Drag Handle */}
-                        <div className="flex flex-col gap-[3px] text-[#6b6f9e] mr-1 cursor-grab">
+                        <div className="flex flex-col gap-[3px] text-[#6b6f9e] mr-2 cursor-grab shrink-0">
                           <div className="flex gap-[3px]"><div className="w-[3px] h-[3px] rounded-full bg-current"></div><div className="w-[3px] h-[3px] rounded-full bg-current"></div></div>
                           <div className="flex gap-[3px]"><div className="w-[3px] h-[3px] rounded-full bg-current"></div><div className="w-[3px] h-[3px] rounded-full bg-current"></div></div>
                           <div className="flex gap-[3px]"><div className="w-[3px] h-[3px] rounded-full bg-current"></div><div className="w-[3px] h-[3px] rounded-full bg-current"></div></div>
                         </div>
-                        <span className="text-[#d1d5db] text-[15px]">{cat.name}</span>
+
+                        <div className="flex flex-col gap-2.5 flex-1 min-w-0 mr-4">
+                           <div className="grid grid-cols-2 gap-x-12 gap-y-2.5 items-center">
+                              {/* TH */}
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">TH</span>
+                                <span className="text-[#d1d5db] text-[15px] font-normal truncate" title={cat.name_th || cat.name}>{cat.name_th || cat.name}</span>
+                              </div>
+                              {/* EN */}
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">EN</span>
+                                <span className="text-gray-400 text-[14.5px] font-light truncate" title={cat.name_en}>{cat.name_en || '-'}</span>
+                              </div>
+                              {/* JP */}
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">JP</span>
+                                <span className="text-gray-400 text-[14.5px] font-light truncate" title={cat.name_jp}>{cat.name_jp || '-'}</span>
+                              </div>
+                              {/* CN */}
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">CN</span>
+                                <span className="text-gray-400 text-[14.5px] font-light truncate" title={cat.name_cn}>{cat.name_cn || '-'}</span>
+                              </div>
+                           </div>
+                        </div>
+
                         {cat.badge_text && (
-                          <span className="border border-[#4c5075] text-[#9ca3af] text-[11px] px-2.5 py-0.5 rounded-full font-light tracking-wide">
+                          <span className="border border-[#4c5075] text-[#9ca3af] text-[11px] px-2.5 py-0.5 rounded-full font-light tracking-wide shrink-0 whitespace-nowrap self-center mr-6">
                             {cat.badge_text}
                           </span>
                         )}
