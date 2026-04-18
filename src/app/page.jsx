@@ -1,6 +1,6 @@
 'use client';
 import Image from "next/image";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -13,8 +13,27 @@ export default function Home() {
   const [errorVisible, setErrorVisible] = useState(false);
   const errorTimeoutRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [sysVersion, setSysVersion] = useState('v0.01.03'); // Default fallback
   const router = useRouter();
   const { login } = useAuth();
+
+  useEffect(() => {
+    // Fetch the latest Back Office version
+    const fetchLatestVersion = async () => {
+      const { data } = await supabase
+        .from('system_versions')
+        .select('version_number')
+        .eq('system_type', 'back_office')
+        .order('release_date', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (data && data.version_number) {
+        setSysVersion(data.version_number);
+      }
+    };
+    fetchLatestVersion();
+  }, []);
 
   const showErrorMsg = (msg) => {
     setError(msg);
@@ -182,7 +201,7 @@ export default function Home() {
 
         {/* Version String bottom right */}
         <div className="absolute bottom-6 right-8 text-sm text-gray-300 font-light">
-          v0.01.03
+          {sysVersion.toLowerCase().startsWith('v') ? sysVersion : `v${sysVersion}`}
         </div>
       </div>
     </>

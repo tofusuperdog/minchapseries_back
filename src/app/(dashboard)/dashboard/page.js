@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import VersionManager from './VersionManager';
 
 export const revalidate = 0; // opt out of static rendering
 
@@ -77,6 +78,9 @@ export default async function OverviewPage() {
         </div>
         
       </div>
+
+      {/* Version Management Section */}
+      <VersionManager />
     </div>
   );
 }
