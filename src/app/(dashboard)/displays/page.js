@@ -1255,47 +1255,46 @@ export default function DisplaysPage() {
                         ${dragOverIndex === idx && draggedIndex !== idx ? 'border-t-2 border-t-[#5c85f1] scale-[1.01]' : ''}
                       `}
                     >
-                      <div className="flex items-center gap-4 py-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-5 py-1.5 flex-1 min-w-0 mr-10">
                         {/* Drag Handle */}
-                        <div className="flex flex-col gap-[3px] text-[#6b6f9e] mr-2 cursor-grab shrink-0">
+                        <div className="flex flex-col gap-[3px] text-[#6b6f9e] shrink-0 cursor-grab">
                           <div className="flex gap-[3px]"><div className="w-[3px] h-[3px] rounded-full bg-current"></div><div className="w-[3px] h-[3px] rounded-full bg-current"></div></div>
                           <div className="flex gap-[3px]"><div className="w-[3px] h-[3px] rounded-full bg-current"></div><div className="w-[3px] h-[3px] rounded-full bg-current"></div></div>
                           <div className="flex gap-[3px]"><div className="w-[3px] h-[3px] rounded-full bg-current"></div><div className="w-[3px] h-[3px] rounded-full bg-current"></div></div>
                         </div>
 
-                        <div className="flex flex-col gap-2.5 flex-1 min-w-0 mr-4">
-                           <div className="grid grid-cols-2 gap-x-12 gap-y-2.5 items-center">
-                              {/* TH */}
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">TH</span>
-                                <span className="text-[#d1d5db] text-[15px] font-normal truncate" title={cat.name_th || cat.name}>{cat.name_th || cat.name}</span>
-                              </div>
-                              {/* EN */}
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">EN</span>
-                                <span className="text-gray-400 text-[14.5px] font-light truncate" title={cat.name_en}>{cat.name_en || '-'}</span>
-                              </div>
-                              {/* JP */}
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">JP</span>
-                                <span className="text-gray-400 text-[14.5px] font-light truncate" title={cat.name_jp}>{cat.name_jp || '-'}</span>
-                              </div>
-                              {/* CN */}
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">CN</span>
-                                <span className="text-gray-400 text-[14.5px] font-light truncate" title={cat.name_cn}>{cat.name_cn || '-'}</span>
-                              </div>
-                           </div>
+                        {/* Languages Part */}
+                        <div className="grid grid-cols-2 gap-x-12 gap-y-2 flex-1 min-w-0">
+                            {/* TH */}
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">TH</span>
+                              <span className="text-[#d1d5db] text-[15px] font-normal truncate" title={cat.name_th || cat.name}>{cat.name_th || cat.name}</span>
+                            </div>
+                            {/* EN */}
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">EN</span>
+                              <span className="text-gray-400 text-[14.5px] font-light truncate" title={cat.name_en}>{cat.name_en || '-'}</span>
+                            </div>
+                            {/* JP */}
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">JP</span>
+                              <span className="text-gray-400 text-[14.5px] font-light truncate" title={cat.name_jp}>{cat.name_jp || '-'}</span>
+                            </div>
+                            {/* CN */}
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="w-[32px] h-[22px] border border-gray-600 rounded flex items-center justify-center text-[10px] font-medium text-gray-400 bg-white/5 shrink-0">CN</span>
+                              <span className="text-gray-400 text-[14.5px] font-light truncate" title={cat.name_cn}>{cat.name_cn || '-'}</span>
+                            </div>
                         </div>
+                      </div>
 
+                      <div className="flex items-center gap-5 text-gray-400 shrink-0">
                         {cat.badge_text && (
-                          <span className="border border-[#4c5075] text-[#9ca3af] text-[11px] px-2.5 py-0.5 rounded-full font-light tracking-wide shrink-0 whitespace-nowrap self-center mr-6">
+                          <span className="border border-[#4c5075] text-[#9ca3af] text-[11px] px-3 py-0.5 rounded-full font-light tracking-wide shrink-0 whitespace-nowrap mr-2">
                             {cat.badge_text}
                           </span>
                         )}
-                      </div>
 
-                      <div className="flex items-center gap-5 text-gray-400">
                         {/* Edit Icon */}
                         <button 
                           onClick={() => {
@@ -1313,6 +1312,7 @@ export default function DisplaysPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </button>
+
 
                         <div className="w-[1px] h-5 bg-[#4c5075]"></div>
 
