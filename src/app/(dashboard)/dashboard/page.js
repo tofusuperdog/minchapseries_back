@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import VersionManager from './VersionManager';
+import DashboardGraph from './DashboardGraph';
+
 
 export const revalidate = 0; // opt out of static rendering
 
@@ -79,8 +81,35 @@ export default async function OverviewPage() {
         
       </div>
 
-      {/* Version Management Section */}
-      <VersionManager />
+      {/* Graph Section */}
+      <DashboardGraph />
+
+      {/* Bottom Section Split */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        
+        {/* Left: Suggestion System */}
+        <div className="bg-[#131024] border border-[#2d2252] rounded shadow-md h-[600px] flex flex-col">
+          <div className="p-5 border-b border-[#2d2252]">
+            <h2 className="text-xl font-semibold text-white tracking-wide">ระบบข้อเสนอแนะ</h2>
+          </div>
+          <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
+            {/* Empty box mock */}
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-50">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span className="text-sm font-light">ยังไม่มีข้อเสนอแนะในขณะนี้</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Version Management Section */}
+        <div className="bg-[#131024] border border-[#2d2252] rounded shadow-md h-[600px] flex flex-col">
+          <div className="p-5 flex-1 overflow-y-auto custom-scrollbar pt-0">
+            <VersionManager />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

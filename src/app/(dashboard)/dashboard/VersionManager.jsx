@@ -9,6 +9,7 @@ export default function VersionManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [latestVersions, setLatestVersions] = useState({ back_office: '', website: '', app: '' });
 
   // Notification State
   const [errorMsg, setErrorMsg] = useState('');
@@ -52,8 +53,30 @@ export default function VersionManager() {
     setLoading(false);
   };
 
+  const fetchLatestVersions = async () => {
+    const systems = ['back_office', 'website', 'app'];
+    const results = {};
+    
+    for (const sys of systems) {
+      const { data, error } = await supabase
+        .from('system_versions')
+        .select('version_number')
+        .eq('system_type', sys)
+        .order('release_date', { ascending: false })
+        .limit(1);
+      
+      if (!error && data && data.length > 0) {
+        results[sys] = data[0].version_number;
+      } else {
+        results[sys] = 'ไม่มีข้อมูล';
+      }
+    }
+    setLatestVersions(results);
+  };
+
   useEffect(() => {
     fetchVersions();
+    fetchLatestVersions();
   }, [activeTab]);
 
   const handleOpenModal = () => {
@@ -157,6 +180,7 @@ export default function VersionManager() {
     } else {
       setIsModalOpen(false);
       fetchVersions();
+      fetchLatestVersions();
     }
   };
 
@@ -167,7 +191,7 @@ export default function VersionManager() {
   ];
 
   return (
-    <div className="mt-12 w-full">
+    <div className="my-6 w-full px-2">
       {/* Error Notification Banner (format from login page) */}
       <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[200] transition-all duration-500 ease-out ${showError ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}>
         <div className="bg-[#D24949] text-white px-6 py-3.5 rounded shadow-2xl flex items-center space-x-4 w-max min-w-[300px]">
@@ -313,7 +337,14 @@ export default function VersionManager() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-light text-gray-300 mb-2">เลข Version</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-light text-gray-300">เลข Version</label>
+                  {!editingId && (
+                    <span className="text-[11px] text-[#6C72FF] font-medium">
+                      (ล่าสุด: {latestVersions[formSystem]})
+                    </span>
+                  )}
+                </div>
                 <input 
                   type="text"
                   placeholder="เช่น v1.2.0"
