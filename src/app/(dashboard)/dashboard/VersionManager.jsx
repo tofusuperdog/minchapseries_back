@@ -10,6 +10,7 @@ export default function VersionManager() {
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [latestVersions, setLatestVersions] = useState({ back_office: '', website: '', app: '' });
+  const [showDetailId, setShowDetailId] = useState(null);
 
   // Notification State
   const [errorMsg, setErrorMsg] = useState('');
@@ -56,7 +57,7 @@ export default function VersionManager() {
   const fetchLatestVersions = async () => {
     const systems = ['back_office', 'website', 'app'];
     const results = {};
-    
+
     for (const sys of systems) {
       const { data, error } = await supabase
         .from('system_versions')
@@ -64,7 +65,7 @@ export default function VersionManager() {
         .eq('system_type', sys)
         .order('release_date', { ascending: false })
         .limit(1);
-      
+
       if (!error && data && data.length > 0) {
         results[sys] = data[0].version_number;
       } else {
@@ -77,6 +78,7 @@ export default function VersionManager() {
   useEffect(() => {
     fetchVersions();
     fetchLatestVersions();
+    setShowDetailId(null);
   }, [activeTab]);
 
   const handleOpenModal = () => {
@@ -112,7 +114,7 @@ export default function VersionManager() {
 
   const confirmDelete = async () => {
     if (!deletingId) return;
-    
+
     const { error } = await supabase.from('system_versions').delete().eq('id', deletingId);
     if (error) {
       displayError('เกิดข้อผิดพลาดในการลบข้อมูล');
@@ -124,7 +126,7 @@ export default function VersionManager() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validations
     if (!formVersion.trim()) {
       displayError('กรุณากรอกเลขเวอร์ชัน');
@@ -202,14 +204,14 @@ export default function VersionManager() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white tracking-wide">บันทึกการอัปเดตระบบ</h2>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-[17px] font-semibold text-white tracking-wide">บันทึกการอัปเดตระบบ</h2>
         <button
           onClick={handleOpenModal}
-          className="bg-gradient-to-r from-[#6C72FF] to-[#8C6DFF] hover:from-[#5b61f2] hover:to-[#7c5de8] text-white px-5 py-2.5 rounded-md text-sm font-medium transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer"
+          className="w-9 h-9 bg-gradient-to-r from-[#6C72FF] to-[#8C6DFF] hover:from-[#5b61f2] hover:to-[#7c5de8] text-white rounded-full transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center cursor-pointer"
+          title="เพิ่มเวอร์ชันใหม่"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-          เพิ่มเวอร์ชันใหม่
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       </div>
 
@@ -219,11 +221,10 @@ export default function VersionManager() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-3 text-[15px] font-medium transition-colors border-b-2 cursor-pointer ${
-              activeTab === tab.id 
-                ? 'border-[#6C72FF] text-[#6C72FF]' 
-                : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-white/5'
-            }`}
+            className={`px-6 py-3 text-[15px] font-medium transition-colors border-b-2 cursor-pointer ${activeTab === tab.id
+              ? 'border-[#6C72FF] text-[#6C72FF]'
+              : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-white/5'
+              }`}
           >
             {tab.label}
           </button>
@@ -231,84 +232,99 @@ export default function VersionManager() {
       </div>
 
       {/* List */}
-      <div className="space-y-6">
+      <div className="space-y-2">
         {loading ? (
-          <div className="text-gray-400 py-10 text-center font-light">กำลังโหลดข้อมูล...</div>
+          <div className="text-gray-400 py-10 text-center font-light text-sm">กำลังโหลดข้อมูล...</div>
         ) : versions.length === 0 ? (
-          <div className="bg-[#131024] border border-[#2d2252] rounded-lg p-10 text-center text-gray-400 font-light">
+          <div className="bg-[#131024] border border-[#2d2252] rounded-lg p-10 text-center text-gray-400 font-light text-sm">
             ยังไม่มีข้อมูลประวัติการอัปเดตสำหรับระบบนี้
           </div>
         ) : (
           versions.map((v) => (
-            <div key={v.id} className="bg-[#131024] border border-[#2d2252] rounded-lg p-6 shadow-md hover:border-[#3a2c68] transition-colors relative group">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <span className="text-2xl font-bold text-white bg-white/5 px-4 py-1 rounded-md border border-white/10">
+            <div key={v.id} className="bg-[#131024]/50 border border-[#2d2252] rounded p-3 hover:bg-[#1a1635] hover:border-[#3a2c68] transition-all relative group flex items-center justify-between">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                {/* Version Number */}
+                <div className="w-[70px] shrink-0">
+                  <span className="text-[14px] font-bold text-white bg-white/5 px-2 py-0.5 rounded border border-white/10">
                     {v.version_number}
                   </span>
-                  <span className="text-gray-400 text-sm">
-                    {new Date(v.release_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
-                  </span>
                 </div>
-                
-                {/* Actions */}
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => handleEdit(v)}
-                    className="p-2 text-gray-400 hover:text-[#6C72FF] hover:bg-white/5 rounded-md transition-all cursor-pointer"
-                    title="แก้ไข"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteClick(v.id)}
-                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-white/5 rounded-md transition-all cursor-pointer"
-                    title="ลบ"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>
-                  </button>
+
+                {/* Tags */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {v.new_features && (
+                    <span className="w-2 h-2 rounded-full bg-[#4ade80]" title="ฟีเจอร์ใหม่"></span>
+                  )}
+                  {v.improved_features && (
+                    <span className="w-2 h-2 rounded-full bg-[#60a5fa]" title="ปรับปรุง"></span>
+                  )}
+                  {v.fixed_features && (
+                    <span className="w-2 h-2 rounded-full bg-[#f87171]" title="แก้ไขบัค"></span>
+                  )}
+                </div>
+
+                {/* Date */}
+                <div className="text-gray-400 text-[12px] truncate">
+                  {new Date(v.release_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {v.new_features && (
-                  <div className="flex gap-4">
-                    <div className="w-[100px] flex-shrink-0">
-                      <span className="inline-block bg-[#1a3a2a] text-[#4ade80] border border-[#14532d] text-xs px-3 py-1 rounded-full font-medium tracking-wide">
-                        เพิ่มใหม่
-                      </span>
-                    </div>
-                    <div className="text-gray-300 font-light whitespace-pre-wrap flex-1 leading-relaxed">
-                      {v.new_features}
-                    </div>
-                  </div>
-                )}
-                
-                {v.improved_features && (
-                  <div className="flex gap-4">
-                    <div className="w-[100px] flex-shrink-0">
-                      <span className="inline-block bg-[#1a2d42] text-[#60a5fa] border border-[#1e3a8a] text-xs px-3 py-1 rounded-full font-medium tracking-wide">
-                        ปรับปรุง
-                      </span>
-                    </div>
-                    <div className="text-gray-300 font-light whitespace-pre-wrap flex-1 leading-relaxed">
-                      {v.improved_features}
-                    </div>
-                  </div>
-                )}
+              {/* Actions */}
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Detail Button with Tooltip Logic */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDetailId(showDetailId === v.id ? null : v.id)}
+                    className={`p-1.5 rounded transition-all cursor-pointer ${showDetailId === v.id ? 'bg-[#6C72FF] text-white' : 'text-gray-400 hover:text-[#6C72FF] hover:bg-white/5'}`}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+                  </button>
 
-                {v.fixed_features && (
-                  <div className="flex gap-4">
-                    <div className="w-[100px] flex-shrink-0">
-                      <span className="inline-block bg-[#3c1d1d] text-[#f87171] border border-[#7f1d1d] text-xs px-3 py-1 rounded-full font-medium tracking-wide">
-                        แก้ไข
-                      </span>
+                  {/* Tooltip / Detail Popover */}
+                  {showDetailId === v.id && (
+                    <div className="fixed sm:absolute right-0 top-full mt-2 z-[150] w-[280px] sm:w-[320px] bg-[#1a1635] border border-[#3a2c68] rounded-lg shadow-2xl p-4 animate-in fade-in zoom-in duration-200">
+                      <div className="flex justify-between items-center mb-3 border-b border-[#2d2252] pb-2">
+                        <span className="text-white font-semibold text-sm">v{v.version_number}</span>
+                        <button onClick={() => setShowDetailId(null)} className="text-gray-500 hover:text-white"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+                      </div>
+                      <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                        {v.new_features && (
+                          <div>
+                            <div className="text-[#4ade80] text-[11px] font-bold mb-1 uppercase tracking-wider">เพิ่มใหม่</div>
+                            <div className="text-gray-300 text-xs font-light leading-relaxed whitespace-pre-wrap">{v.new_features}</div>
+                          </div>
+                        )}
+                        {v.improved_features && (
+                          <div>
+                            <div className="text-[#60a5fa] text-[11px] font-bold mb-1 uppercase tracking-wider">ปรับปรุง</div>
+                            <div className="text-gray-300 text-xs font-light leading-relaxed whitespace-pre-wrap">{v.improved_features}</div>
+                          </div>
+                        )}
+                        {v.fixed_features && (
+                          <div>
+                            <div className="text-[#f87171] text-[11px] font-bold mb-1 uppercase tracking-wider">แก้ไข</div>
+                            <div className="text-gray-300 text-xs font-light leading-relaxed whitespace-pre-wrap">{v.fixed_features}</div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-gray-300 font-light whitespace-pre-wrap flex-1 leading-relaxed">
-                      {v.fixed_features}
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handleEdit(v)}
+                  className="p-1.5 text-gray-400 hover:text-[#6C72FF] hover:bg-white/5 rounded transition-all cursor-pointer"
+                  title="แก้ไข"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                </button>
+                <button
+                  onClick={() => handleDeleteClick(v.id)}
+                  className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/5 rounded transition-all cursor-pointer"
+                  title="ลบ"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" /></svg>
+                </button>
               </div>
             </div>
           ))
@@ -317,19 +333,19 @@ export default function VersionManager() {
 
       {/* Modal Overlay for Add/Edit */}
       <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] transition-all duration-300 ${isModalOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className={`bg-[#12102f] border border-[#2d2252] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 transform transition-transform duration-300 ${isModalOpen ? 'scale-100' : 'scale-95'}`}>
-          <h2 className="text-2xl font-bold text-white mb-6">
+        <div className={`bg-[#12102f] border border-[#2d2252] rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl p-6 transform transition-transform duration-300 ${isModalOpen ? 'scale-100' : 'scale-95'} custom-scrollbar`}>
+          <h2 className="text-lg font-bold text-white mb-4">
             {editingId ? 'แก้ไขประวัติการอัปเดตระบบ' : 'เพิ่มประวัติการอัปเดตระบบ'}
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-light text-gray-300 mb-2">ระบบ</label>
-                <select 
+                <label className="block text-xs font-light text-gray-300 mb-1.5">ระบบ</label>
+                <select
                   value={formSystem}
                   onChange={(e) => setFormSystem(e.target.value)}
-                  className="w-full h-11 px-3 bg-[#131024] border border-[#2d2252] rounded text-white focus:outline-none focus:border-[#6C72FF] appearance-none cursor-pointer"
+                  className="w-full h-10 px-3 bg-[#131024] border border-[#2d2252] rounded text-sm text-white focus:outline-none focus:border-[#6C72FF] appearance-none cursor-pointer"
                 >
                   <option value="back_office">ระบบหลังบ้าน</option>
                   <option value="website">เว็บไซด์</option>
@@ -337,104 +353,104 @@ export default function VersionManager() {
                 </select>
               </div>
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-light text-gray-300">เลข Version</label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-xs font-light text-gray-300">เลข Version</label>
                   {!editingId && (
-                    <span className="text-[11px] text-[#6C72FF] font-medium">
+                    <span className="text-[10px] text-[#6C72FF] font-medium">
                       (ล่าสุด: {latestVersions[formSystem]})
                     </span>
                   )}
                 </div>
-                <input 
+                <input
                   type="text"
                   placeholder="เช่น v1.2.0"
                   value={formVersion}
                   onChange={(e) => setFormVersion(e.target.value)}
                   required
-                  className="w-full h-11 px-4 bg-[#131024] border border-[#2d2252] rounded text-white placeholder-gray-600 focus:outline-none focus:border-[#6C72FF] transition-colors"
+                  className="w-full h-10 px-4 bg-[#131024] border border-[#2d2252] rounded text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6C72FF] transition-colors"
                 />
               </div>
             </div>
 
-            <div className="space-y-4 border-t border-[#2d2252] pt-6">
-              <label className="block text-base font-semibold text-white mb-4">รายละเอียดการอัปเดต (เลือกอย่างน้อย 1 อย่าง)</label>
-              
+            <div className="space-y-3 border-t border-[#2d2252] pt-4">
+              <label className="block text-sm font-semibold text-white mb-2">รายละเอียดการอัปเดต (เลือกอย่างน้อย 1 อย่าง)</label>
+
               {/* NEW Feature */}
-              <div className="bg-[#131024] border border-[#2d2252] rounded-lg p-4 transition-colors">
+              <div className="bg-[#131024] border border-[#2d2252] rounded-lg p-3 transition-colors">
                 <label className="flex items-center gap-3 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={formNewChecked} 
+                  <input
+                    type="checkbox"
+                    checked={formNewChecked}
                     onChange={(e) => setFormNewChecked(e.target.checked)}
-                    className="w-5 h-5 accent-[#4ade80] cursor-pointer"
+                    className="w-4 h-4 accent-[#4ade80] cursor-pointer"
                   />
-                  <span className="text-[#4ade80] font-medium tracking-wide">เพิ่มใหม่ - ฝั่งพัฒนา / ฟีเจอร์ใหม่</span>
+                  <span className="text-[#4ade80] text-sm font-medium tracking-wide">เพิ่มใหม่</span>
                 </label>
                 {formNewChecked && (
-                  <textarea 
-                    placeholder="กรอกรายละเอียดสำหรับ New Feature..."
+                  <textarea
+                    placeholder="กรอกรายละเอียดสำหรับ เพิ่มใหม่..."
                     value={formNewDesc}
                     onChange={(e) => setFormNewDesc(e.target.value)}
-                    className="w-full text-sm font-light mt-3 p-3 bg-[#0d0a1b] border border-[#2d2252] rounded text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#4ade80] min-h-[100px] resize-y transition-colors"
+                    className="w-full text-xs font-light mt-2 p-2.5 bg-[#0d0a1b] border border-[#2d2252] rounded text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#4ade80] min-h-[80px] resize-y transition-colors"
                   />
                 )}
               </div>
 
               {/* IMPROVED Feature */}
-              <div className="bg-[#131024] border border-[#2d2252] rounded-lg p-4 transition-colors">
+              <div className="bg-[#131024] border border-[#2d2252] rounded-lg p-3 transition-colors">
                 <label className="flex items-center gap-3 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={formImprovedChecked} 
+                  <input
+                    type="checkbox"
+                    checked={formImprovedChecked}
                     onChange={(e) => setFormImprovedChecked(e.target.checked)}
-                    className="w-5 h-5 accent-[#60a5fa] cursor-pointer"
+                    className="w-4 h-4 accent-[#60a5fa] cursor-pointer"
                   />
-                  <span className="text-[#60a5fa] font-medium tracking-wide">ปรับปรุง - การปรับปรุงที่มีอยู่แล้วให้ดีขึ้น</span>
+                  <span className="text-[#60a5fa] text-sm font-medium tracking-wide">ปรับปรุง</span>
                 </label>
                 {formImprovedChecked && (
-                  <textarea 
-                    placeholder="กรอกรายละเอียดสำหรับ Improved Feature..."
+                  <textarea
+                    placeholder="กรอกรายละเอียดสำหรับ ปรับปรุง..."
                     value={formImprovedDesc}
                     onChange={(e) => setFormImprovedDesc(e.target.value)}
-                    className="w-full text-sm font-light mt-3 p-3 bg-[#0d0a1b] border border-[#2d2252] rounded text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#60a5fa] min-h-[100px] resize-y transition-colors"
+                    className="w-full text-xs font-light mt-2 p-2.5 bg-[#0d0a1b] border border-[#2d2252] rounded text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#60a5fa] min-h-[80px] resize-y transition-colors"
                   />
                 )}
               </div>
 
               {/* FIXED Feature */}
-              <div className="bg-[#131024] border border-[#2d2252] rounded-lg p-4 transition-colors">
+              <div className="bg-[#131024] border border-[#2d2252] rounded-lg p-3 transition-colors">
                 <label className="flex items-center gap-3 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={formFixedChecked} 
+                  <input
+                    type="checkbox"
+                    checked={formFixedChecked}
                     onChange={(e) => setFormFixedChecked(e.target.checked)}
-                    className="w-5 h-5 accent-[#f87171] cursor-pointer"
+                    className="w-4 h-4 accent-[#f87171] cursor-pointer"
                   />
-                  <span className="text-[#f87171] font-medium tracking-wide">แก้ไข - การแก้ไขบัค / ข้อผิดพลาด</span>
+                  <span className="text-[#f87171] text-sm font-medium tracking-wide">แก้ไข</span>
                 </label>
                 {formFixedChecked && (
-                  <textarea 
-                    placeholder="กรอกรายละเอียดการแก้ไขบัค..."
+                  <textarea
+                    placeholder="กรอกรายละเอียดสำหรับ แก้ไข..."
                     value={formFixedDesc}
                     onChange={(e) => setFormFixedDesc(e.target.value)}
-                    className="w-full text-sm font-light mt-3 p-3 bg-[#0d0a1b] border border-[#2d2252] rounded text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#f87171] min-h-[100px] resize-y transition-colors"
+                    className="w-full text-xs font-light mt-2 p-2.5 bg-[#0d0a1b] border border-[#2d2252] rounded text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#f87171] min-h-[80px] resize-y transition-colors"
                   />
                 )}
               </div>
             </div>
 
-            <div className="flex justify-end space-x-4 pt-6 border-t border-[#2d2252]">
+            <div className="flex justify-end space-x-3 pt-4 border-t border-[#2d2252]">
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-6 py-2.5 border border-[#504481] hover:bg-white/5 transition-colors rounded text-gray-300 font-light cursor-pointer"
+                className="px-5 py-2 border border-[#504481] hover:bg-white/5 transition-colors rounded text-gray-300 font-light cursor-pointer text-sm"
               >
                 ยกเลิก
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-8 py-2.5 bg-[#6C72FF] hover:bg-[#5b61f2] disabled:opacity-50 transition-colors rounded text-white font-medium cursor-pointer shadow-[0_0_15px_rgba(108,114,255,0.4)]"
+                className="px-6 py-2 bg-[#6C72FF] hover:bg-[#5b61f2] disabled:opacity-50 transition-colors rounded text-white font-medium cursor-pointer shadow-[0_0_15px_rgba(108,114,255,0.4)] text-sm"
               >
                 {submitting ? 'กำลังบันทึก...' : (editingId ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล')}
               </button>

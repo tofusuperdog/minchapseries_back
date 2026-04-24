@@ -32,8 +32,8 @@ function generateMockData(days = 7) {
       'ยอดรวม': total,
       'ไทย': th,
       'USA': usa,
-      'ญี่ปุ่น': jp,
       'จีน': cn,
+      'ญี่ปุ่น': jp,
     });
   }
   return data;
@@ -49,13 +49,62 @@ const mockDataVipAll = mockDataVipWeek.map((item, idx) => ({
   'ยอดรวม': item['ยอดรวม'] + mockDataVipMonth[idx]['ยอดรวม'],
   'ไทย': item['ไทย'] + mockDataVipMonth[idx]['ไทย'],
   'USA': item['USA'] + mockDataVipMonth[idx]['USA'],
-  'ญี่ปุ่น': item['ญี่ปุ่น'] + mockDataVipMonth[idx]['ญี่ปุ่น'],
   'จีน': item['จีน'] + mockDataVipMonth[idx]['จีน'],
+  'ญี่ปุ่น': item['ญี่ปุ่น'] + mockDataVipMonth[idx]['ญี่ปุ่น'],
 }));
+
+const CustomLegend = ({ payload }) => {
+  const order = ['ยอดรวม', 'ไทย', 'USA', 'จีน', 'ญี่ปุ่น'];
+  const colors = {
+    'ยอดรวม': '#ffffff',
+    'ไทย': '#3b82f6',
+    'USA': '#ef4444',
+    'จีน': '#f59e0b',
+    'ญี่ปุ่น': '#10b981'
+  };
+
+  return (
+    <div className="flex flex-col gap-2 ml-5">
+      {order.map((key) => (
+        <div key={key} className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors[key] }} />
+          <span className="text-gray-300 text-[11px] font-medium">{key}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const order = ['ยอดรวม', 'ไทย', 'USA', 'จีน', 'ญี่ปุ่น'];
+    const sortedPayload = [...payload].sort((a, b) => 
+      order.indexOf(a.name) - order.indexOf(b.name)
+    );
+
+    return (
+      <div className="bg-[#131024]/95 border border-[#3b2a75] p-3 rounded-lg shadow-2xl backdrop-blur-md">
+        <p className="text-gray-400 text-[11px] mb-2 font-medium border-b border-[#2d2252] pb-1">วันที่ {label}</p>
+        <div className="space-y-1.5">
+          {sortedPayload.map((entry, index) => (
+            <div key={`item-${index}`} className="flex items-center justify-between gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                <span className="text-gray-300 text-xs font-light">{entry.name}</span>
+              </div>
+              <span className="text-white text-xs font-semibold">{entry.value.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function DashboardGraph() {
   const [activeTab, setActiveTab] = useState('streaming');
-  const [vipFilter, setVipFilter] = useState('all');
+  const [vipFilter, setVipFilter] = useState('week');
 
   const tabs = [
     { id: 'streaming', label: 'การสตรีมมิ่ง' },
@@ -70,9 +119,7 @@ export default function DashboardGraph() {
       case 'users': return mockDataUsers;
       case 'beans': return mockDataBeans;
       case 'vip': 
-        if (vipFilter === 'week') return mockDataVipWeek;
-        if (vipFilter === 'month') return mockDataVipMonth;
-        return mockDataVipAll;
+        return vipFilter === 'week' ? mockDataVipWeek : mockDataVipMonth;
       default: return mockDataStreaming;
     }
   };
@@ -90,15 +137,15 @@ export default function DashboardGraph() {
   const data = getChartData();
 
   return (
-    <div className="bg-[#131024] border border-[#2d2252] rounded shadow-md mt-6 p-4">
-      <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[#2d2252] pb-4 mb-4">
+    <div className="bg-[#131024] border border-[#2d2252] rounded shadow-md p-4 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[#2d2252] pb-4 mb-4 shrink-0">
         {/* Tabs */}
         <div className="flex space-x-2 sm:space-x-4 w-full sm:w-auto overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 text-sm whitespace-nowrap font-medium rounded transition-colors ${
+              className={`px-4 py-2 text-sm whitespace-nowrap font-medium rounded transition-colors cursor-pointer ${
                 activeTab === tab.id
                   ? 'bg-[#3b2a75] text-white'
                   : 'text-gray-400 hover:text-white hover:bg-[#2d2252]'
@@ -116,9 +163,8 @@ export default function DashboardGraph() {
             <select 
               value={vipFilter} 
               onChange={(e) => setVipFilter(e.target.value)}
-              className="bg-[#2d2252] border border-[#3b2a75] text-white text-sm rounded outline-none p-1.5"
+              className="bg-[#2d2252] border border-[#3b2a75] text-white text-sm rounded outline-none p-1.5 cursor-pointer"
             >
-              <option value="all">ทั้งหมด</option>
               <option value="week">VIP 1 สัปดาห์</option>
               <option value="month">VIP 1 เดือน</option>
             </select>
@@ -126,22 +172,24 @@ export default function DashboardGraph() {
         )}
       </div>
 
-      <div className="h-[350px] w-full">
+      <div className="flex-1 w-full min-h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2d2252" />
             <XAxis dataKey="date" stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} />
             <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} label={{ value: getChartYLabel(), angle: -90, position: 'insideLeft', fill: '#9ca3af', fontSize: 12 }} />
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#131024', borderColor: '#2d2252', color: '#fff' }}
-              itemStyle={{ fontSize: 14 }}
-            />
-            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+            <Tooltip content={<CustomTooltip />} />
             <Line type="monotone" dataKey="ยอดรวม" stroke="#ffffff" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
             <Line type="monotone" dataKey="ไทย" stroke="#3b82f6" strokeWidth={2} />
             <Line type="monotone" dataKey="USA" stroke="#ef4444" strokeWidth={2} />
-            <Line type="monotone" dataKey="ญี่ปุ่น" stroke="#10b981" strokeWidth={2} />
             <Line type="monotone" dataKey="จีน" stroke="#f59e0b" strokeWidth={2} />
+            <Line type="monotone" dataKey="ญี่ปุ่น" stroke="#10b981" strokeWidth={2} />
+            <Legend 
+              content={<CustomLegend />}
+              layout="vertical" 
+              align="right" 
+              verticalAlign="middle" 
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>

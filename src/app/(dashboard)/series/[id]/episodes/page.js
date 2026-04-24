@@ -60,6 +60,11 @@ function VePlayerComponent({ vid, playAuthToken, playDomain, lineAppId, lineUser
           license: license || undefined,
           ...(vodLogOpts ? { vodLogOpts } : {}),
           autoplay: true,
+          enableMenu: true,
+          controls: true,
+          controlBar: {
+            visible: true,
+          },
         });
       } catch (error) {
         console.error('Failed to initialize BytePlus player:', error);
@@ -159,6 +164,7 @@ export default function EpisodesPage() {
   const [playingVid, setPlayingVid] = useState(null);
   const [playAuthToken, setPlayAuthToken] = useState(null);
   const [playDomain, setPlayDomain] = useState('');
+  const [playingSubtitles, setPlayingSubtitles] = useState([]);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
 
@@ -180,14 +186,17 @@ export default function EpisodesPage() {
     setPlayingVid(null);
     setPlayAuthToken(null);
     setPlayDomain('');
+    setPlayingSubtitles([]);
   };
 
   const playVideo = async (vid) => {
-    if (!vid) return;
+    const cleanVid = typeof vid === 'string' ? vid.trim() : '';
+    if (!cleanVid) return;
     setIsVideoLoading(true);
-    setPlayingVid(vid);
+    setPlayingVid(cleanVid);
+    setPlayingSubtitles([]);
     try {
-      const res = await fetch(`/api/vod/playauth?vid=${encodeURIComponent(vid)}`);
+      const res = await fetch(`/api/vod/playauth?vid=${encodeURIComponent(cleanVid)}`);
       const data = await res.json();
       if (res.ok && data.playAuthToken) {
         setPlayAuthToken(data.playAuthToken);
@@ -235,7 +244,9 @@ export default function EpisodesPage() {
   };
 
   const saveEpisode = async () => {
-    if (!videoLink || !videoLink.trim()) {
+    const cleanedVideoLink = videoLink.trim();
+
+    if (!cleanedVideoLink) {
       showError('กรุณากรอก vid');
       return;
     }
@@ -244,7 +255,7 @@ export default function EpisodesPage() {
     const payload = {
       series_id: seriesId,
       episode_no: selectedEpisode,
-      video_url: videoLink,
+      video_url: cleanedVideoLink,
       is_free: isFree
     };
 
@@ -658,26 +669,34 @@ export default function EpisodesPage() {
 
       {/* Video Player Modal */}
       {playingVid && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 backdrop-blur-md backdrop-grayscale">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 backdrop-blur-md backdrop-grayscale" onContextMenu={(e) => e.preventDefault()}>
            <button onClick={closeVideoModal} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-[80] outline-none">
              <div className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
                <XIcon />
              </div>
            </button>
            
-           <div className="w-full max-w-5xl aspect-video relative rounded-lg overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10 bg-black">
+           <div
+             className="w-full max-w-5xl aspect-video relative rounded-lg overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10 bg-black select-none"
+             onContextMenu={(e) => e.preventDefault()}
+             onDragStart={(e) => e.preventDefault()}
+             onMouseDown={(e) => {
+               if (e.button === 2) e.preventDefault();
+             }}
+             onTouchStart={(e) => e.preventDefault()}
+           >
              {isVideoLoading || !playAuthToken ? (
-               <div className="absolute inset-0 flex items-center justify-center">
+               <div className="absolute inset-0 z-[70] flex items-center justify-center">
                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5c67f2]"></div>
                </div>
              ) : (
                <VePlayerComponent
-            vid={playingVid}
-            playAuthToken={playAuthToken}
-            playDomain={playDomain}
-            lineAppId={1006938}
-            lineUserId={currentUserId}
-          />
+                 vid={playingVid}
+                 playAuthToken={playAuthToken}
+                 playDomain={playDomain}
+                 lineAppId={1006938}
+                 lineUserId={currentUserId}
+               />
              )}
            </div>
         </div>
