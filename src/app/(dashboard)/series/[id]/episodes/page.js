@@ -7,49 +7,70 @@ import { supabase } from '@/lib/supabase';
 import '@byteplus/veplayer/index.min.css';
 
 // Helper component for BytePlus VePlayer
-function VePlayerComponent({ vid, playAuthToken }) {
+function VePlayerComponent({ vid, playAuthToken, playDomain }) {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current || !vid || !playAuthToken) return;
 
-    let playerInstance = null;
+    let cancelled = false;
 
     const initPlayer = async () => {
-      // Dynamic import to avoid SSR issues with VePlayer
-      const VePlayer = (await import('@byteplus/veplayer')).default;
-      
-      const playerId = `veplayer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      containerRef.current.id = playerId;
-
-      // License is required for BytePlus VePlayer
-      if (process.env.NEXT_PUBLIC_BYTEPLUS_LICENSE) {
-        // VePlayer.setLicenseConfig was introduced for Web SDK licenses
-        if (typeof VePlayer.setLicenseConfig === 'function') {
-          await VePlayer.setLicenseConfig({ license: process.env.NEXT_PUBLIC_BYTEPLUS_LICENSE });
+      try {
+        if (playerRef.current) {
+          playerRef.current.destroy();
+          playerRef.current = null;
         }
+
+        containerRef.current.innerHTML = '';
+
+        // Dynamic import to avoid SSR issues with VePlayer
+        const VePlayerModule = await import('@byteplus/veplayer');
+        const VePlayer = VePlayerModule.default || VePlayerModule;
+
+        const playerId = `veplayer-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        containerRef.current.id = playerId;
+
+        const license = process.env.NEXT_PUBLIC_BYTEPLUS_LICENSE;
+        const lineAppId = Number(process.env.NEXT_PUBLIC_BYTEPLUS_LINE_APP_ID);
+        const lineUserId = process.env.NEXT_PUBLIC_BYTEPLUS_LINE_USER_ID || `web-${Date.now()}`;
+        const vodLogOpts = Number.isFinite(lineAppId) && lineAppId > 0
+          ? {
+              line_app_id: lineAppId,
+              line_user_id: lineUserId,
+            }
+          : undefined;
+
+        // Web Player SDK requires the license to be configured before init.
+        if (license && typeof VePlayer.setLicenseConfig === 'function') {
+          await VePlayer.setLicenseConfig({ license });
+        }
+
+        if (cancelled) return;
+
+        playerRef.current = new VePlayer({
+          id: playerId,
+          vid,
+          getVideoByToken: {
+            playAuthToken,
+            ...(playDomain ? { playDomain } : {}),
+          },
+          width: '100%',
+          height: '100%',
+          license: license || undefined,
+          ...(vodLogOpts ? { vodLogOpts } : {}),
+          autoplay: true,
+        });
+      } catch (error) {
+        console.error('Failed to initialize BytePlus player:', error);
       }
-
-      playerInstance = new VePlayer({
-        id: playerId,
-        vid,
-        playAuthToken,
-        width: '100%',
-        height: '100%',
-        license: process.env.NEXT_PUBLIC_BYTEPLUS_LICENSE || '', // fallback
-        disableVodLogOptsCheck: true,
-        vodLogOpts: {
-          line_app_id: 0,
-          line_user_id: 'unknown'
-        }
-      });
-      playerRef.current = playerInstance;
     };
 
     initPlayer();
 
     return () => {
+      cancelled = true;
       if (playerRef.current) {
         playerRef.current.destroy();
         playerRef.current = null;
@@ -57,7 +78,7 @@ function VePlayerComponent({ vid, playAuthToken }) {
     };
   }, [vid, playAuthToken]);
 
-  return <div ref={containerRef} className="w-full h-full bg-black"></div>;
+  return <div ref={containerRef} className="w-full h-full bg-black" />;
 }
 
 // Helper for pill badges
@@ -138,6 +159,7 @@ export default function EpisodesPage() {
   // Video Playing State
   const [playingVid, setPlayingVid] = useState(null);
   const [playAuthToken, setPlayAuthToken] = useState(null);
+  const [playDomain, setPlayDomain] = useState('');
   const [isVideoLoading, setIsVideoLoading] = useState(false);
 
   // Notification State
@@ -157,6 +179,7 @@ export default function EpisodesPage() {
   const closeVideoModal = () => {
     setPlayingVid(null);
     setPlayAuthToken(null);
+    setPlayDomain('');
   };
 
   const playVideo = async (vid) => {
@@ -164,10 +187,11 @@ export default function EpisodesPage() {
     setIsVideoLoading(true);
     setPlayingVid(vid);
     try {
-      const res = await fetch(`/api/vod/playauth?vid=${vid}`);
+      const res = await fetch(`/api/vod/playauth?vid=${encodeURIComponent(vid)}`);
       const data = await res.json();
       if (res.ok && data.playAuthToken) {
         setPlayAuthToken(data.playAuthToken);
+        setPlayDomain(data.playDomain || '');
       } else {
         alert('ไม่สามารถดึงข้อมูลสำหรับเล่นวิดีโอได้ (Failed to load token)');
         closeVideoModal();
@@ -642,7 +666,7 @@ export default function EpisodesPage() {
                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5c67f2]"></div>
                </div>
              ) : (
-               <VePlayerComponent vid={playingVid} playAuthToken={playAuthToken} />
+               <VePlayerComponent vid={playingVid} playAuthToken={playAuthToken} playDomain={playDomain} />
              )}
            </div>
         </div>
