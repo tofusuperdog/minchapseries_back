@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import '@byteplus/veplayer/index.min.css';
 
 // Helper component for BytePlus VePlayer
-function VePlayerComponent({ vid, playAuthToken, playDomain }) {
+function VePlayerComponent({ vid, playAuthToken, playDomain, lineAppId, lineUserId }) {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
 
@@ -33,12 +33,11 @@ function VePlayerComponent({ vid, playAuthToken, playDomain }) {
         containerRef.current.id = playerId;
 
         const license = process.env.NEXT_PUBLIC_BYTEPLUS_LICENSE;
-        const lineAppId = Number(process.env.NEXT_PUBLIC_BYTEPLUS_LINE_APP_ID);
-        const lineUserId = process.env.NEXT_PUBLIC_BYTEPLUS_LINE_USER_ID || `web-${Date.now()}`;
-        const vodLogOpts = Number.isFinite(lineAppId) && lineAppId > 0
+        const parsedLineAppId = Number(lineAppId);
+        const vodLogOpts = Number.isFinite(parsedLineAppId) && parsedLineAppId > 0
           ? {
-              line_app_id: lineAppId,
-              line_user_id: lineUserId,
+              line_app_id: parsedLineAppId,
+              line_user_id: lineUserId || `web-${Date.now()}`,
             }
           : undefined;
 
@@ -76,7 +75,7 @@ function VePlayerComponent({ vid, playAuthToken, playDomain }) {
         playerRef.current = null;
       }
     };
-  }, [vid, playAuthToken]);
+  }, [vid, playAuthToken, playDomain, lineAppId, lineUserId]);
 
   return <div ref={containerRef} className="w-full h-full bg-black" />;
 }
@@ -161,6 +160,7 @@ export default function EpisodesPage() {
   const [playAuthToken, setPlayAuthToken] = useState(null);
   const [playDomain, setPlayDomain] = useState('');
   const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState('');
 
   // Notification State
   const [errorMsg, setErrorMsg] = useState('');
@@ -272,6 +272,11 @@ export default function EpisodesPage() {
   useEffect(() => {
     async function fetchData() {
       if (!seriesId) return;
+
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user?.id) {
+        setCurrentUserId(authData.user.id);
+      }
 
       // Fetch genres
       const { data: gData } = await supabase.from('genre').select('id, name_th');
@@ -666,7 +671,13 @@ export default function EpisodesPage() {
                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5c67f2]"></div>
                </div>
              ) : (
-               <VePlayerComponent vid={playingVid} playAuthToken={playAuthToken} playDomain={playDomain} />
+               <VePlayerComponent
+            vid={playingVid}
+            playAuthToken={playAuthToken}
+            playDomain={playDomain}
+            lineAppId={1006938}
+            lineUserId={currentUserId}
+          />
              )}
            </div>
         </div>
