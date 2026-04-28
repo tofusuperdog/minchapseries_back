@@ -35,9 +35,49 @@ export async function GET(request) {
 
     const playAuthToken = vodService.GetPlayAuthToken(params, 3600);
 
+    // Fetch play info to get subtitles (SubtitleInfoList)
+    let subtitles = [];
+    try {
+      const playInfoParams = {
+        ...params,
+        Ssl: '1', // Request HTTPS URLs for subtitles
+      };
+      const playInfoRes = await vodService.GetPlayInfo(playInfoParams);
+
+      // The response structure: { Result: { SubtitleInfoList: [...] } }
+      const result = playInfoRes?.Result;
+      const subtitleList = result?.SubtitleInfoList;
+
+      // Log raw subtitle objects to see all available fields
+      if (subtitleList && subtitleList.length > 0) {
+        console.log('Raw SubtitleInfoList:', JSON.stringify(subtitleList, null, 2));
+
+        subtitles = subtitleList
+          .filter(sub => sub.Status === 'enable' || !sub.Status)
+          .map((sub, idx) => {
+            // Try multiple possible URL fields
+            const subtitleUrl = sub.SubtitleUrl || sub.MainUrl || sub.BackupUrl || sub.Url || '';
+            console.log(`Subtitle[${idx}] keys:`, Object.keys(sub), 'SubtitleUrl:', sub.SubtitleUrl, 'All values:', sub);
+
+            return {
+              id: sub.SubtitleId || String(idx),
+              src: subtitleUrl,
+              text: sub.Language || sub.Tag || `Subtitle ${idx + 1}`,
+              language: sub.Language || sub.LanguageId,
+              format: sub.Format || 'webvtt',
+              default: idx === 0,
+            };
+          });
+      }
+    } catch (subError) {
+      console.error('Error fetching subtitles from BytePlus:', subError);
+      // Don't fail the whole request if subtitles fail
+    }
+
     return NextResponse.json({
       playAuthToken,
       playDomain: process.env.BYTEPLUS_VOD_PLAY_DOMAIN || 'https://vod.byteplusapi.com',
+      subtitles,
     });
   } catch (error) {
     console.error('Error generating play auth token:', error);

@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import '@byteplus/veplayer/index.min.css';
 
 // Helper component for BytePlus VePlayer
-function VePlayerComponent({ vid, playAuthToken, playDomain, lineAppId, lineUserId }) {
+function VePlayerComponent({ vid, playAuthToken, playDomain, lineAppId, lineUserId, subtitles }) {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
 
@@ -36,9 +36,9 @@ function VePlayerComponent({ vid, playAuthToken, playDomain, lineAppId, lineUser
         const parsedLineAppId = Number(lineAppId);
         const vodLogOpts = Number.isFinite(parsedLineAppId) && parsedLineAppId > 0
           ? {
-              line_app_id: parsedLineAppId,
-              line_user_id: lineUserId || `web-${Date.now()}`,
-            }
+            line_app_id: parsedLineAppId,
+            line_user_id: lineUserId || `web-${Date.now()}`,
+          }
           : undefined;
 
         // Web Player SDK requires the license to be configured before init.
@@ -48,13 +48,14 @@ function VePlayerComponent({ vid, playAuthToken, playDomain, lineAppId, lineUser
 
         if (cancelled) return;
 
-        playerRef.current = new VePlayer({
+        const playerConfig = {
           id: playerId,
           vid,
           getVideoByToken: {
             playAuthToken,
             ...(playDomain ? { playDomain } : {}),
           },
+          lang: 'en',
           width: '100%',
           height: '100%',
           license: license || undefined,
@@ -65,7 +66,24 @@ function VePlayerComponent({ vid, playAuthToken, playDomain, lineAppId, lineUser
           controlBar: {
             visible: true,
           },
-        });
+        };
+
+        // Add Subtitle support if provided
+        if (subtitles && subtitles.length > 0) {
+          playerConfig.plugins = [VePlayer.Subtitle];
+          playerConfig.Subtitle = {
+            isDefaultOpen: true,
+            list: subtitles.map((sub, idx) => ({
+              id: sub.id || String(idx),
+              src: sub.src,
+              text: sub.text,
+              language: sub.language || sub.text,
+              default: sub.default || idx === 0,
+            })),
+          };
+        }
+
+        playerRef.current = new VePlayer(playerConfig);
       } catch (error) {
         console.error('Failed to initialize BytePlus player:', error);
       }
@@ -80,10 +98,11 @@ function VePlayerComponent({ vid, playAuthToken, playDomain, lineAppId, lineUser
         playerRef.current = null;
       }
     };
-  }, [vid, playAuthToken, playDomain, lineAppId, lineUserId]);
+  }, [vid, playAuthToken, playDomain, lineAppId, lineUserId, subtitles]);
 
   return <div ref={containerRef} className="w-full h-full bg-black" />;
 }
+
 
 // Helper for pill badges
 function LangBadge({ label, active }) {
@@ -142,7 +161,7 @@ const LockIcon = () => (
 export default function EpisodesPage() {
   const router = useRouter();
   const { id: seriesId } = useParams();
-  
+
   const [series, setSeries] = useState(null);
   const [genres, setGenres] = useState([]);
   const [savedEpisodes, setSavedEpisodes] = useState([]);
@@ -189,7 +208,8 @@ export default function EpisodesPage() {
     setPlayingSubtitles([]);
   };
 
-  const playVideo = async (vid) => {
+  const playVideo = async (episode) => {
+    const vid = episode?.video_url || '';
     const cleanVid = typeof vid === 'string' ? vid.trim() : '';
     if (!cleanVid) return;
     setIsVideoLoading(true);
@@ -201,6 +221,12 @@ export default function EpisodesPage() {
       if (res.ok && data.playAuthToken) {
         setPlayAuthToken(data.playAuthToken);
         setPlayDomain(data.playDomain || '');
+
+        // Use the ones from API
+        if (data.subtitles && data.subtitles.length > 0) {
+          console.log(data.subtitles);
+          setPlayingSubtitles(data.subtitles);
+        }
       } else {
         alert('ไม่สามารถดึงข้อมูลสำหรับเล่นวิดีโอได้ (Failed to load token)');
         closeVideoModal();
@@ -256,7 +282,7 @@ export default function EpisodesPage() {
       series_id: seriesId,
       episode_no: selectedEpisode,
       video_url: cleanedVideoLink,
-      is_free: isFree
+      is_free: isFree,
     };
 
     const { data, error } = await supabase
@@ -306,7 +332,7 @@ export default function EpisodesPage() {
         router.push('/series');
         return;
       }
-      
+
       // Fetch episodes
       const { data: epData } = await supabase.from('episode').select('*').eq('series_id', seriesId);
       if (epData) setSavedEpisodes(epData);
@@ -336,7 +362,7 @@ export default function EpisodesPage() {
   return (
     <div className="w-full pb-20 relative">
       {/* Error Notification */}
-      <div 
+      <div
         className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 ease-out ${errorVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}
         style={{ display: errorMsg ? 'block' : 'none' }}
       >
@@ -367,166 +393,166 @@ export default function EpisodesPage() {
       <div className="bg-[#181236]/70 border border-[#2d2252] rounded-lg p-8 shadow-lg space-y-8">
         {/* Info Card */}
         <div className="flex gap-8">
-        {/* Poster */}
-        <div className="w-[200px] h-[280px] shrink-0 bg-[#0d0a1b] rounded overflow-hidden relative border border-gray-700 shadow-lg">
-          {series.poster_url ? (
-             <Image src={series.poster_url} alt={series.title_th} fill sizes="200px" style={{ objectFit: 'cover' }} />
-          ) : (
-             <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">No Image</div>
-          )}
-        </div>
-        
-        {/* Details */}
-        <div className="flex-1 flex flex-col pt-1">
-          <div className="space-y-2 mb-6">
-            <div className="flex items-center text-xl text-white tracking-wide font-medium">
-              <LangPrefix label="TH" active={true} />
-              {series.title_th}
-            </div>
-            {series.title_en && (
-              <div className="flex items-center text-[15px] text-gray-300 font-light">
-                <LangPrefix label="EN" active={true} />
-                {series.title_en}
-              </div>
-            )}
-            {series.title_jp && (
-              <div className="flex items-center text-[15px] text-gray-300 font-light">
-                <LangPrefix label="JP" active={true} />
-                {series.title_jp}
-              </div>
-            )}
-            {series.title_cn && (
-              <div className="flex items-center text-[15px] text-gray-300 font-light">
-                <LangPrefix label="CN" active={true} />
-                {series.title_cn}
-              </div>
+          {/* Poster */}
+          <div className="w-[200px] h-[280px] shrink-0 bg-[#0d0a1b] rounded overflow-hidden relative border border-gray-700 shadow-lg">
+            {series.poster_url ? (
+              <Image src={series.poster_url} alt={series.title_th} fill sizes="200px" style={{ objectFit: 'cover' }} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">No Image</div>
             )}
           </div>
-          
-          <div className="flex flex-wrap gap-2 mb-6">
-            {genreNames.map((name, idx) => (
-              <span key={idx} className="border border-gray-500 text-gray-200 text-[13px] px-3 py-1 rounded-md">
-                {name}
-              </span>
-            ))}
-          </div>
-          
 
-          <div className="space-y-3 flex flex-col">
-             <div className="flex items-center text-[15px] text-gray-300 font-light space-x-3">
+          {/* Details */}
+          <div className="flex-1 flex flex-col pt-1">
+            <div className="space-y-2 mb-6">
+              <div className="flex items-center text-xl text-white tracking-wide font-medium">
+                <LangPrefix label="TH" active={true} />
+                {series.title_th}
+              </div>
+              {series.title_en && (
+                <div className="flex items-center text-[15px] text-gray-300 font-light">
+                  <LangPrefix label="EN" active={true} />
+                  {series.title_en}
+                </div>
+              )}
+              {series.title_jp && (
+                <div className="flex items-center text-[15px] text-gray-300 font-light">
+                  <LangPrefix label="JP" active={true} />
+                  {series.title_jp}
+                </div>
+              )}
+              {series.title_cn && (
+                <div className="flex items-center text-[15px] text-gray-300 font-light">
+                  <LangPrefix label="CN" active={true} />
+                  {series.title_cn}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-6">
+              {genreNames.map((name, idx) => (
+                <span key={idx} className="border border-gray-500 text-gray-200 text-[13px] px-3 py-1 rounded-md">
+                  {name}
+                </span>
+              ))}
+            </div>
+
+
+            <div className="space-y-3 flex flex-col">
+              <div className="flex items-center text-[15px] text-gray-300 font-light space-x-3">
                 <span className="w-20">เสียงพากย์</span>
                 <div className="flex space-x-2">
-                   {['th', 'en', 'jp', 'cn'].map(lang => (
-                     <LangBadge key={lang} label={lang.toUpperCase()} active={series[`dub_${lang}`]} />
-                   ))}
+                  {['th', 'en', 'jp', 'cn'].map(lang => (
+                    <LangBadge key={lang} label={lang.toUpperCase()} active={series[`dub_${lang}`]} />
+                  ))}
                 </div>
-             </div>
-             <div className="flex items-center text-[15px] text-gray-300 font-light space-x-3">
+              </div>
+              <div className="flex items-center text-[15px] text-gray-300 font-light space-x-3">
                 <span className="w-20">บรรยาย</span>
                 <div className="flex space-x-2">
-                   {['th', 'en', 'jp', 'cn'].map(lang => (
-                     <LangBadge key={lang} label={lang.toUpperCase()} active={series[`sub_${lang}`]} />
-                   ))}
+                  {['th', 'en', 'jp', 'cn'].map(lang => (
+                    <LangBadge key={lang} label={lang.toUpperCase()} active={series[`sub_${lang}`]} />
+                  ))}
                 </div>
-             </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Episodes Table Container */}
-      <div className="border border-[#2d2252] rounded-lg overflow-hidden bg-[#12102f]/80 shadow-xl">
-        <table className="w-full text-center text-sm font-light text-gray-300">
-          <thead>
-            <tr className="border-b border-[#2d2252]">
-              <th className="font-light py-4 w-[15%]">ตอน</th>
-              <th className="font-light py-4 w-[25%]">สถานะ</th>
-              <th className="font-light py-4 w-[20%]">เล่น</th>
-              <th className="font-light py-4 w-[20%]">แก้ไข</th>
-              <th className="font-light py-4 w-[20%]">ลบ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {episodes.map((ep, idx) => {
-              const savedEp = savedEpisodes.find(e => e.episode_no === ep);
+        {/* Episodes Table Container */}
+        <div className="border border-[#2d2252] rounded-lg overflow-hidden bg-[#12102f]/80 shadow-xl">
+          <table className="w-full text-center text-sm font-light text-gray-300">
+            <thead>
+              <tr className="border-b border-[#2d2252]">
+                <th className="font-light py-4 w-[15%]">ตอน</th>
+                <th className="font-light py-4 w-[25%]">สถานะ</th>
+                <th className="font-light py-4 w-[20%]">เล่น</th>
+                <th className="font-light py-4 w-[20%]">แก้ไข</th>
+                <th className="font-light py-4 w-[20%]">ลบ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {episodes.map((ep, idx) => {
+                const savedEp = savedEpisodes.find(e => e.episode_no === ep);
 
-              return (
-              <tr 
-                key={ep} 
-                className={`transition-colors h-14 ${idx % 2 === 0 ? 'bg-white/5' : ''} hover:bg-[#28214f]/50`}
-              >
-                <td className="py-3 font-medium">{ep}</td>
-                {savedEp ? (
-                  <>
-                    <td className="py-3 text-center">
-                      <div className="flex justify-center items-center text-gray-300">
-                        {savedEp.is_free ? (
-                          <span className="text-[13px] font-medium">ฟรี</span>
-                        ) : (
-                          <LockIcon />
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 text-center">
-                      <div className="flex justify-center items-center">
-                        {savedEp.video_url ? (
-                          <button onClick={() => playVideo(savedEp.video_url)} className="text-green-500 hover:text-green-400 transition-colors cursor-pointer outline-none">
-                            <PlayIcon />
-                          </button>
-                        ) : (
-                          <span className="text-gray-600 cursor-not-allowed">
-                            <PlayIcon />
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 text-center">
-                      <div className="flex justify-center items-center">
-                        <button onClick={() => openModal(ep)} className="text-[#a1a1aa] hover:text-white transition-colors cursor-pointer">
-                          <EditIcon />
+                return (
+                  <tr
+                    key={ep}
+                    className={`transition-colors h-14 ${idx % 2 === 0 ? 'bg-white/5' : ''} hover:bg-[#28214f]/50`}
+                  >
+                    <td className="py-3 font-medium">{ep}</td>
+                    {savedEp ? (
+                      <>
+                        <td className="py-3 text-center">
+                          <div className="flex justify-center items-center text-gray-300">
+                            {savedEp.is_free ? (
+                              <span className="text-[13px] font-medium">ฟรี</span>
+                            ) : (
+                              <LockIcon />
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 text-center">
+                          <div className="flex justify-center items-center">
+                            {savedEp.video_url ? (
+                              <button onClick={() => playVideo(savedEp)} className="text-green-500 hover:text-green-400 transition-colors cursor-pointer outline-none">
+                                <PlayIcon />
+                              </button>
+                            ) : (
+                              <span className="text-gray-600 cursor-not-allowed">
+                                <PlayIcon />
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 text-center">
+                          <div className="flex justify-center items-center">
+                            <button onClick={() => openModal(ep)} className="text-[#a1a1aa] hover:text-white transition-colors cursor-pointer">
+                              <EditIcon />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3 text-center">
+                          <div className="flex justify-center items-center">
+                            <button onClick={() => {
+                              setEpisodeToDelete(ep);
+                              setShowDeleteModal(true);
+                            }} className="text-[#a1a1aa] hover:text-red-400 transition-colors cursor-pointer">
+                              <TrashIcon />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <td colSpan={4} className="py-3">
+                        <button
+                          onClick={() => openModal(ep)}
+                          className="text-[#a1a1aa] underline underline-offset-4 cursor-pointer hover:text-white transition-colors text-[13px]"
+                        >
+                          เพิ่มวิดีโอ
                         </button>
-                      </div>
-                    </td>
-                    <td className="py-3 text-center">
-                      <div className="flex justify-center items-center">
-                        <button onClick={() => {
-                          setEpisodeToDelete(ep);
-                          setShowDeleteModal(true);
-                        }} className="text-[#a1a1aa] hover:text-red-400 transition-colors cursor-pointer">
-                          <TrashIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                ) : (
-                  <td colSpan={4} className="py-3">
-                    <button 
-                      onClick={() => openModal(ep)}
-                      className="text-[#a1a1aa] underline underline-offset-4 cursor-pointer hover:text-white transition-colors text-[13px]"
-                    >
-                      เพิ่มวิดีโอ
-                    </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+              {episodes.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-10 text-gray-500">
+                    ไม่มีตอนในระบบ (จำนวนตอนเป็น 0)
                   </td>
-                )}
-              </tr>
-              );
-            })}
-            {episodes.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-10 text-gray-500">
-                  ไม่มีตอนในระบบ (จำนวนตอนเป็น 0)
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm backdrop-grayscale">
           <div className="bg-[#12102f] border border-[#2d2252] w-full max-w-[500px] rounded-xl shadow-2xl overflow-hidden flex flex-col relative text-white">
-            
+
             {/* Modal Header */}
             <div className="flex items-center justify-center px-6 py-4 border-b border-[#2d2252] relative">
               <h2 className="text-lg font-medium tracking-wide">
@@ -578,38 +604,38 @@ export default function EpisodesPage() {
               {/* Form Fields */}
               <div className="space-y-4">
                 <div className="flex items-center">
-                   <label className="w-24 text-[13px] text-gray-300">vid</label>
-                   <input
-                     type="text"
-                     value={videoLink}
-                     onChange={(e) => setVideoLink(e.target.value)}
-                     className="flex-1 bg-white text-black px-3 py-2 rounded text-[13px] outline-none w-full shadow-sm"
-                   />
+                  <label className="w-24 text-[13px] text-gray-300">vid</label>
+                  <input
+                    type="text"
+                    value={videoLink}
+                    onChange={(e) => setVideoLink(e.target.value)}
+                    className="flex-1 bg-white text-black px-3 py-2 rounded text-[13px] outline-none w-full shadow-sm"
+                  />
                 </div>
                 <div className="flex items-center pb-2">
-                   <label className="w-24 text-[13px] text-gray-300">สถานะ</label>
-                   <div className="flex items-center space-x-6">
-                     <label className="flex items-center cursor-pointer space-x-2">
-                       <input
-                         type="radio"
-                         name="status"
-                         checked={!isFree}
-                         onChange={() => setIsFree(false)}
-                         className="w-4 h-4 bg-transparent border-gray-500 cursor-pointer accent-[#5c67f2]"
-                       />
-                       <span className="text-[13px] text-gray-300">จ่ายเงิน</span>
-                     </label>
-                     <label className="flex items-center cursor-pointer space-x-2">
-                       <input
-                         type="radio"
-                         name="status"
-                         checked={isFree}
-                         onChange={() => setIsFree(true)}
-                         className="w-4 h-4 bg-transparent border-gray-500 cursor-pointer accent-[#5c67f2]"
-                       />
-                       <span className="text-[13px] text-gray-300">ฟรี</span>
-                     </label>
-                   </div>
+                  <label className="w-24 text-[13px] text-gray-300">สถานะ</label>
+                  <div className="flex items-center space-x-6">
+                    <label className="flex items-center cursor-pointer space-x-2">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={!isFree}
+                        onChange={() => setIsFree(false)}
+                        className="w-4 h-4 bg-transparent border-gray-500 cursor-pointer accent-[#5c67f2]"
+                      />
+                      <span className="text-[13px] text-gray-300">จ่ายเงิน</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer space-x-2">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={isFree}
+                        onChange={() => setIsFree(true)}
+                        className="w-4 h-4 bg-transparent border-gray-500 cursor-pointer accent-[#5c67f2]"
+                      />
+                      <span className="text-[13px] text-gray-300">ฟรี</span>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex justify-center pt-2 gap-4">
@@ -640,7 +666,7 @@ export default function EpisodesPage() {
             <div className="flex flex-col items-center justify-center p-8 space-y-4">
               <h2 className="text-xl font-medium text-center tracking-wide">ยืนยันการลบ</h2>
               <p className="text-[13px] text-gray-300 text-center leading-relaxed">
-                คุณแน่ใจหรือไม่ว่าต้องการลบวิดีโอตอนที่ <span className="text-white font-medium">{episodeToDelete}</span>? <br/>
+                คุณแน่ใจหรือไม่ว่าต้องการลบวิดีโอตอนที่ <span className="text-white font-medium">{episodeToDelete}</span>? <br />
                 หากลบแล้วจะไม่สามารถกู้คืนข้อมูลของตอนนี้ได้
               </p>
               <div className="flex w-full space-x-4 pt-6">
@@ -670,35 +696,36 @@ export default function EpisodesPage() {
       {/* Video Player Modal */}
       {playingVid && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 backdrop-blur-md backdrop-grayscale" onContextMenu={(e) => e.preventDefault()}>
-           <button onClick={closeVideoModal} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-[80] outline-none">
-             <div className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
-               <XIcon />
-             </div>
-           </button>
-           
-           <div
-             className="w-full max-w-5xl aspect-video relative rounded-lg overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10 bg-black select-none"
-             onContextMenu={(e) => e.preventDefault()}
-             onDragStart={(e) => e.preventDefault()}
-             onMouseDown={(e) => {
-               if (e.button === 2) e.preventDefault();
-             }}
-             onTouchStart={(e) => e.preventDefault()}
-           >
-             {isVideoLoading || !playAuthToken ? (
-               <div className="absolute inset-0 z-[70] flex items-center justify-center">
-                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5c67f2]"></div>
-               </div>
-             ) : (
-               <VePlayerComponent
-                 vid={playingVid}
-                 playAuthToken={playAuthToken}
-                 playDomain={playDomain}
-                 lineAppId={1006938}
-                 lineUserId={currentUserId}
-               />
-             )}
-           </div>
+          <button onClick={closeVideoModal} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-[80] outline-none">
+            <div className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+              <XIcon />
+            </div>
+          </button>
+
+          <div
+            className="w-full max-w-5xl aspect-video relative rounded-lg overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10 bg-black select-none"
+            onContextMenu={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
+            onMouseDown={(e) => {
+              if (e.button === 2) e.preventDefault();
+            }}
+            onTouchStart={(e) => e.preventDefault()}
+          >
+            {isVideoLoading || !playAuthToken ? (
+              <div className="absolute inset-0 z-[70] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5c67f2]"></div>
+              </div>
+            ) : (
+              <VePlayerComponent
+                vid={playingVid}
+                playAuthToken={playAuthToken}
+                playDomain={playDomain}
+                lineAppId={1006938}
+                lineUserId={currentUserId}
+                subtitles={playingSubtitles}
+              />
+            )}
+          </div>
         </div>
       )}
     </div>
