@@ -137,7 +137,7 @@ export default function DashboardGraph() {
   const data = getChartData();
 
   return (
-    <div className="bg-[#131024] border border-[#2d2252] rounded shadow-md p-4 h-full flex flex-col">
+    <div className="bg-[#131024] border border-[#2d2252] rounded shadow-md p-4 h-full min-h-0 flex flex-col">
       <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[#2d2252] pb-4 mb-4 shrink-0">
         {/* Tabs */}
         <div className="flex space-x-2 sm:space-x-4 w-full sm:w-auto overflow-x-auto">
@@ -172,7 +172,7 @@ export default function DashboardGraph() {
         )}
       </div>
 
-      <div className="flex-1 w-full min-h-[280px]">
+      <div className="w-full flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2d2252" />
