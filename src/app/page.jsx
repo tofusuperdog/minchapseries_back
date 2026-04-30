@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -25,22 +25,8 @@ export default function Home() {
   const errorTimeoutRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sysVersion, setSysVersion] = useState("v0.01.03");
-  const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 });
-  const [pointerVisible, setPointerVisible] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
-  const magicTrail = useMemo(
-    () =>
-      Array.from({ length: 12 }, (_, index) => ({
-        id: `magic-trail-${index + 1}`,
-        size: 6 + (index % 4) * 3,
-        offsetX: (index % 2 === 0 ? -1 : 1) * (14 + index * 3),
-        offsetY: -10 - index * 8,
-        delay: `${index * 0.08}s`,
-        duration: `${1.7 + index * 0.08}s`,
-      })),
-    []
-  );
 
   useEffect(() => {
     const fetchLatestVersion = async () => {
@@ -58,32 +44,6 @@ export default function Home() {
     };
 
     fetchLatestVersion();
-  }, []);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 1024px)");
-
-    const handlePointerMove = (event) => {
-      if (!mediaQuery.matches) return;
-      setPointerPosition({ x: event.clientX, y: event.clientY });
-      setPointerVisible(true);
-    };
-
-    const handlePointerLeave = () => {
-      setPointerVisible(false);
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerdown", handlePointerMove);
-    window.addEventListener("mouseleave", handlePointerLeave);
-    window.addEventListener("blur", handlePointerLeave);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerdown", handlePointerMove);
-      window.removeEventListener("mouseleave", handlePointerLeave);
-      window.removeEventListener("blur", handlePointerLeave);
-    };
   }, []);
 
   const showErrorMsg = (msg) => {
@@ -163,33 +123,6 @@ export default function Home() {
       </div>
 
       <div className="hidden lg:flex min-h-screen items-center justify-center bg-[linear-gradient(135deg,#090d2b_0%,#11154D_32%,#1f255f_64%,#241230_100%)] relative overflow-hidden px-8">
-        <div
-          className={`magic-pointer hidden lg:block ${pointerVisible ? "opacity-100" : "opacity-0"}`}
-          style={{
-            left: `${pointerPosition.x}px`,
-            top: `${pointerPosition.y}px`,
-          }}
-          aria-hidden="true"
-        >
-          <span className="magic-pointer-aura" />
-          <span className="magic-pointer-core" />
-          <span className="magic-pointer-ring magic-pointer-ring-one" />
-          <span className="magic-pointer-ring magic-pointer-ring-two" />
-          {magicTrail.map((spark) => (
-            <span
-              key={spark.id}
-              className="magic-pointer-spark"
-              style={{
-                "--spark-size": `${spark.size}px`,
-                "--spark-offset-x": `${spark.offsetX}px`,
-                "--spark-offset-y": `${spark.offsetY}px`,
-                "--spark-delay": spark.delay,
-                "--spark-duration": spark.duration,
-              }}
-            />
-          ))}
-        </div>
-
         <div className="cinematic-stage" aria-hidden="true">
           <div className="cinematic-aurora" />
           <div className="cinematic-grid" />

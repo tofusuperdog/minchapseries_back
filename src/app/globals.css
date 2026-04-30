@@ -139,79 +139,6 @@ body {
   backdrop-filter: blur(18px);
 }
 
-.magic-pointer {
-  position: fixed;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-  z-index: 60;
-  transform: translate3d(0, 0, 0);
-  transition: opacity 180ms ease;
-}
-
-.magic-pointer-aura {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 140px;
-  height: 140px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(122, 160, 255, 0.28) 0%, rgba(122, 160, 255, 0.14) 36%, rgba(122, 160, 255, 0) 72%);
-  transform: translate(-50%, -50%);
-  filter: blur(8px);
-  animation: magicAuraPulse 2.8s ease-in-out infinite;
-}
-
-.magic-pointer-core {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(188, 214, 255, 0.95) 42%, rgba(131, 167, 255, 0.9) 70%, rgba(131, 167, 255, 0) 100%);
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.95), 0 0 22px rgba(151, 189, 255, 0.9), 0 0 36px rgba(122, 150, 255, 0.7);
-}
-
-.magic-pointer-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  border: 1px solid rgba(196, 220, 255, 0.45);
-  border-radius: 9999px;
-  transform: translate(-50%, -50%);
-}
-
-.magic-pointer-ring-one {
-  width: 32px;
-  height: 32px;
-  animation: magicRingRotate 3.2s linear infinite;
-}
-
-.magic-pointer-ring-two {
-  width: 52px;
-  height: 52px;
-  border-color: rgba(255, 192, 138, 0.28);
-  animation: magicRingRotateReverse 4.4s linear infinite;
-}
-
-.magic-pointer-spark {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: var(--spark-size);
-  height: var(--spark-size);
-  margin-left: calc(var(--spark-size) * -0.5);
-  margin-top: calc(var(--spark-size) * -0.5);
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(188, 217, 255, 0.95) 40%, rgba(188, 217, 255, 0) 100%);
-  box-shadow: 0 0 10px rgba(188, 217, 255, 0.65);
-  opacity: 0;
-  animation: magicSparkTrail var(--spark-duration) ease-out infinite;
-  animation-delay: var(--spark-delay);
-}
-
 .hero-shine {
   position: relative;
 }
@@ -294,50 +221,6 @@ body {
   }
   70% {
     opacity: 0.35;
-  }
-}
-
-@keyframes magicAuraPulse {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(0.92);
-    opacity: 0.6;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.08);
-    opacity: 1;
-  }
-}
-
-@keyframes magicRingRotate {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg) scale(0.96);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(360deg) scale(1.08);
-  }
-}
-
-@keyframes magicRingRotateReverse {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg) scale(1.04);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(-360deg) scale(0.94);
-  }
-}
-
-@keyframes magicSparkTrail {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 0, 0) scale(0.4);
-  }
-  18% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(var(--spark-offset-x), var(--spark-offset-y), 0) scale(0.1);
   }
 }
 
