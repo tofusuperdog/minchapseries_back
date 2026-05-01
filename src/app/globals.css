@@ -249,3 +249,7 @@ body {
   background-image: linear-gradient(to right, #7b80ff, #5c85f1);
   background-color: #5c85f1;
 }
+
+.veplayer-raised-subtitle xg-text-track.xg-text-track {
+  bottom: 25%;
+}

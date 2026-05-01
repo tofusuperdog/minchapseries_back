@@ -29,6 +29,8 @@ const normalizeSubtitle = (sub, idx) => ({
   default: Boolean(sub.default || sub.isDefault) || idx === 0,
 });
 
+const SUBTITLE_OFFSET_BOTTOM_PERCENT = 25;
+
 // Helper component for BytePlus VePlayer
 const VePlayerComponent = forwardRef(function VePlayerComponent({
   vid,
@@ -184,6 +186,9 @@ const VePlayerComponent = forwardRef(function VePlayerComponent({
           playerConfig.Subtitle = {
             isDefaultOpen: true,
             list: normalizedSubtitles,
+            style: {
+              offsetBottom: SUBTITLE_OFFSET_BOTTOM_PERCENT,
+            },
           };
         } else {
           console.warn('No valid subtitles or VePlayer.Subtitle plugin missing', {
@@ -232,7 +237,12 @@ const VePlayerComponent = forwardRef(function VePlayerComponent({
     };
   }, [vid, playAuthToken, playDomain, lineAppId, lineUserId, subtitles]);
 
-  return <div ref={containerRef} className="w-full h-full bg-black" />;
+  return (
+    <div
+      ref={containerRef}
+      className="veplayer-raised-subtitle h-full w-full bg-black"
+    />
+  );
 });
 
 function LangBadge({ label, active }) {

@@ -123,19 +123,7 @@ export async function GET(request) {
       };
 
       const subtitleRes = await vodService.GetSubtitleInfoList(subtitleParams);
-
-      console.log(
-        'GetSubtitleInfoList raw:',
-        JSON.stringify(subtitleRes, null, 2)
-      );
-
       const subtitleList = getSubtitleListForVid(subtitleRes, vid);
-
-      console.log('Selected subtitle list for vid:', {
-        vid,
-        count: subtitleList.length,
-        fileIds: subtitleList.map((sub) => sub.FileId).filter(Boolean),
-      });
 
       subtitles = dedupeSubtitles(subtitleList)
         .filter((sub) => {
@@ -159,27 +147,12 @@ export async function GET(request) {
             sub.FileUrl ||
             '';
 
-          console.log(`Subtitle[${idx}] normalized:`, {
-            SubtitleId: sub.SubtitleId,
-            Language: sub.Language,
-            LanguageId: sub.LanguageId,
-            Format: sub.Format,
-            Status: sub.Status,
-            SubtitleUrl: sub.SubtitleUrl,
-            Url: sub.Url,
-            MainUrl: sub.MainUrl,
-            BackupUrl: sub.BackupUrl,
-            FileUrl: sub.FileUrl,
-            finalUrl: subtitleUrl,
-          });
-
           const proxiedSubtitleUrl = getSubtitleProxyUrl(subtitleUrl);
 
           return {
             id: String(idx),
             url: proxiedSubtitleUrl,
             src: proxiedSubtitleUrl,
-            originalUrl: subtitleUrl,
             text: getSubtitleLabel(sub, idx),
             language: getSubtitleLanguage(sub),
             format: 'webvtt',
@@ -192,8 +165,6 @@ export async function GET(request) {
     } catch (subError) {
       console.error('Error fetching subtitles from BytePlus:', subError);
     }
-
-    console.log('Final subtitles sent to frontend:', subtitles);
 
     return NextResponse.json({
       playAuthToken,
