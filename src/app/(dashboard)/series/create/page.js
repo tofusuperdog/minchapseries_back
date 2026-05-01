@@ -243,7 +243,7 @@ export default function CreateSeriesPage() {
                     <path d="M14 10.5l-3 4-1.5-2-2.5 3h10z"/>
                   </svg>
                 </div>
-                <div className="text-xs">webp - 220x300 px</div>
+                <div className="text-xs">webp - 360x490 px</div>
               </div>
             )}
           </div>
