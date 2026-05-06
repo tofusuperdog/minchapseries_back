@@ -394,11 +394,6 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
       showErrorMsg('กรุณากรอกข้อมูลให้ครบทั้ง 4 ภาษา');
       return;
     }
-    if (selectedIds.length < 6) {
-      showErrorMsg('ต้องเลือกซีรีส์อย่างน้อย 6 เรื่อง');
-      return;
-    }
-    
     setIsSaving(true);
     const newBadgeText = `${selectedIds.length} ซีรีส์`;
     const { error: dbError } = await supabase
@@ -976,13 +971,6 @@ export default function DisplaysPage() {
           const hasActiveLanguage = dubbedLanguages.some(l => l.is_published);
           if (!hasActiveLanguage) {
             showPageErrorMsg('ต้องเปิดและเลือกซีรีส์อย่างน้อย 1 ภาษาถึงจะเผยแพร่ได้');
-            return;
-          }
-        } else {
-          // Other categories
-          const selectedCount = cat.series_ids ? cat.series_ids.length : 0;
-          if (selectedCount < 6) {
-            showPageErrorMsg('ต้องเลือกซีรีส์อย่างน้อย 6 เรื่อง ถึงจะเผยแพร่ได้');
             return;
           }
         }
