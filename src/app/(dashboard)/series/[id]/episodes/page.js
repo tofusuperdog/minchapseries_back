@@ -34,8 +34,7 @@ const SUBTITLE_OFFSET_BOTTOM_PERCENT = 25;
 // Helper component for BytePlus VePlayer
 const VePlayerComponent = forwardRef(function VePlayerComponent({
   vid,
-  playAuthToken,
-  playDomain,
+  playUrl,
   lineAppId,
   lineUserId,
   subtitles,
@@ -110,7 +109,7 @@ const VePlayerComponent = forwardRef(function VePlayerComponent({
   );
 
   useEffect(() => {
-    if (!containerRef.current || !vid || !playAuthToken) return;
+    if (!containerRef.current || !vid || !playUrl) return;
 
     let cancelled = false;
 
@@ -141,6 +140,7 @@ const VePlayerComponent = forwardRef(function VePlayerComponent({
             ? {
               line_app_id: parsedLineAppId,
               line_user_id: lineUserId || `web-${Date.now()}`,
+              vtype: 'HLS',
             }
             : undefined;
 
@@ -163,10 +163,8 @@ const VePlayerComponent = forwardRef(function VePlayerComponent({
         const playerConfig = {
           id: playerId,
           vid,
-          getVideoByToken: {
-            playAuthToken,
-            ...(playDomain ? { playDomain } : {}),
-          },
+          streamType: 'hls',
+          codec: 'h264',
           lang: 'en',
           width: '100%',
           height: '100%',
@@ -178,6 +176,7 @@ const VePlayerComponent = forwardRef(function VePlayerComponent({
           controlBar: {
             visible: true,
           },
+          url: playUrl,
         };
 
         if (normalizedSubtitles.length > 0 && VePlayer.Subtitle) {
@@ -235,7 +234,7 @@ const VePlayerComponent = forwardRef(function VePlayerComponent({
 
       subtitlePluginRef.current = null;
     };
-  }, [vid, playAuthToken, playDomain, lineAppId, lineUserId, subtitles]);
+  }, [vid, playUrl, lineAppId, lineUserId, subtitles]);
 
   return (
     <div
@@ -363,11 +362,11 @@ export default function EpisodesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [episodeToDelete, setEpisodeToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [transcodeAlert, setTranscodeAlert] = useState(null);
 
   const [playingVid, setPlayingVid] = useState(null);
   const [playingEpisode, setPlayingEpisode] = useState(null);
-  const [playAuthToken, setPlayAuthToken] = useState(null);
-  const [playDomain, setPlayDomain] = useState('');
+  const [playUrl, setPlayUrl] = useState('');
   const [playingSubtitles, setPlayingSubtitles] = useState([]);
   const [activeSubtitleId, setActiveSubtitleId] = useState(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
@@ -394,8 +393,7 @@ export default function EpisodesPage() {
   const closeVideoModal = () => {
     setPlayingVid(null);
     setPlayingEpisode(null);
-    setPlayAuthToken(null);
-    setPlayDomain('');
+    setPlayUrl('');
     setPlayingSubtitles([]);
     setActiveSubtitleId(null);
   };
@@ -411,8 +409,7 @@ export default function EpisodesPage() {
     setPlayingEpisode(episode);
     setPlayingSubtitles([]);
     setActiveSubtitleId(null);
-    setPlayAuthToken(null);
-    setPlayDomain('');
+    setPlayUrl('');
 
     try {
       const res = await fetch(
@@ -421,7 +418,9 @@ export default function EpisodesPage() {
 
       const data = await res.json();
 
-      if (res.ok && data.playAuthToken) {
+      const hlsPlaybackUrl = data.preferredPlaybackSource || data.playUrl || '';
+
+      if (res.ok && hlsPlaybackUrl) {
         const validSubtitles = Array.isArray(data.subtitles)
           ? data.subtitles.filter(
             (sub) =>
@@ -435,10 +434,23 @@ export default function EpisodesPage() {
         setActiveSubtitleId(
           validSubtitles.length > 0 ? getSubtitleId(validSubtitles[0], 0) : null
         );
-        setPlayDomain(data.playDomain || '');
-        setPlayAuthToken(data.playAuthToken);
+        setPlayUrl(hlsPlaybackUrl);
       } else {
-        alert('ไม่สามารถดึงข้อมูลสำหรับเล่นวิดีโอได้ (Failed to load token)');
+        const message =
+          data.code === 'HLS_PLAYBACK_NOT_FOUND'
+            ? 'วิดีโอนี้ยังไม่มีไฟล์ HLS กรุณา Transcode เป็น HLS ก่อนเล่น'
+            : data.error || 'ไม่สามารถดึงไฟล์ HLS สำหรับเล่นวิดีโอได้';
+
+        setTranscodeAlert({
+          title:
+            data.code === 'HLS_PLAYBACK_NOT_FOUND'
+              ? 'ต้อง Transcode ก่อน'
+              : 'โหลดไฟล์ HLS ไม่สำเร็จ',
+          message,
+          episodeNo: episode?.episode_no,
+          vid: cleanVid,
+          playbackSource: data.playbackSource || null,
+        });
         closeVideoModal();
       }
     } catch (e) {
@@ -1041,6 +1053,77 @@ export default function EpisodesPage() {
         </div>
       )}
 
+      {transcodeAlert && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm backdrop-grayscale">
+          <div className="relative w-full max-w-[430px] overflow-hidden rounded-xl border border-[#6b5cff]/70 bg-[#111833] text-white shadow-[0_0_42px_rgba(0,0,0,0.5)]">
+            <button
+              type="button"
+              onClick={() => setTranscodeAlert(null)}
+              className="absolute right-4 top-4 z-10 cursor-pointer text-white/70 transition-colors hover:text-white"
+              aria-label="Close transcode notice"
+            >
+              <XIcon />
+            </button>
+
+            <div className="px-7 pb-7 pt-8">
+              <div className="mb-5 flex items-center justify-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#f6c45b]/60 bg-[#f6c45b]/15 text-[#f6c45b] shadow-[0_0_24px_rgba(246,196,91,0.16)]">
+                  <svg
+                    width="30"
+                    height="30"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+                    <path d="M12 9v4" />
+                    <path d="M12 17h.01" />
+                  </svg>
+                </div>
+              </div>
+
+              <h2 className="text-center text-xl font-semibold tracking-wide">
+                {transcodeAlert.title}
+              </h2>
+
+              <p className="mx-auto mt-3 max-w-[330px] text-center text-[14px] leading-6 text-gray-300">
+                {transcodeAlert.message}
+              </p>
+
+              <div className="mt-5 rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-[12px] text-gray-300">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-gray-500">Episode</span>
+                  <span className="font-medium text-white">
+                    {transcodeAlert.episodeNo || '-'}
+                  </span>
+                </div>
+
+                <div className="mt-2 flex items-start justify-between gap-4">
+                  <span className="shrink-0 text-gray-500">vid</span>
+                  <span className="break-all text-right font-mono text-[11px] text-gray-100">
+                    {transcodeAlert.vid}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setTranscodeAlert(null)}
+                  className="h-10 min-w-[150px] cursor-pointer rounded-md bg-[#5c67f2] px-6 text-[14px] font-medium text-white transition-colors hover:bg-[#4a54c4]"
+                >
+                  รับทราบ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {playingVid && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm backdrop-grayscale px-4 py-6"
@@ -1132,7 +1215,7 @@ export default function EpisodesPage() {
             )}
 
             <div className="mx-auto h-[480px] w-[270px] overflow-hidden bg-black select-none">
-              {isVideoLoading || !playAuthToken ? (
+              {isVideoLoading || !playUrl ? (
                 <div className="flex h-full w-full items-center justify-center">
                   <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[#5c67f2]"></div>
                 </div>
@@ -1140,8 +1223,7 @@ export default function EpisodesPage() {
                 <VePlayerComponent
                   ref={playerControlRef}
                   vid={playingVid}
-                  playAuthToken={playAuthToken}
-                  playDomain={playDomain}
+                  playUrl={playUrl}
                   lineAppId={1006938}
                   lineUserId={currentUserId}
                   subtitles={playingSubtitles}

@@ -1,10 +1,118 @@
 import { NextResponse } from 'next/server';
 import vod from '@byteplus/vcloud-sdk-nodejs';
+import {
+  DEFAULT_PLAY_DOMAIN,
+  shouldUseHlsProxy,
+  signCdnUrl,
+} from '@/lib/byteplusCdn';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const vodService = vod.vodOpenapi.defaultService;
+const DEFAULT_PLAYBACK_PARAMS = {
+  FileType: 'video',
+  Format: 'hls',
+  Codec: 'H264',
+  Ssl: '1',
+};
+const DEFAULT_PLAYBACK_CANDIDATES = [
+  { FileType: 'video', Format: 'hls', Codec: 'H264', Ssl: '1' },
+  { FileType: 'video', Format: 'hls', Codec: 'h264', Ssl: '1' },
+  { FileType: 'video', Format: 'hls', Ssl: '1' },
+  { FileType: 'video', Format: 'HLS', Ssl: '1' },
+];
 
 function getSubtitleProxyUrl(subtitleUrl) {
   return `/api/vod/subtitle?url=${encodeURIComponent(subtitleUrl)}`;
+}
+
+function getHlsProxyUrl(playUrl, origin = '') {
+  if (!playUrl) return '';
+
+  return `${origin}/api/vod/hls?url=${encodeURIComponent(playUrl)}`;
+}
+
+function getPlayInfoList(playInfoRes) {
+  const playInfoList =
+    playInfoRes?.Result?.PlayInfoList ||
+    playInfoRes?.PlayInfoList ||
+    [];
+
+  return Array.isArray(playInfoList) ? playInfoList : [];
+}
+
+function getPlaybackUrl(playInfo) {
+  return (
+    playInfo?.MainPlayUrl ||
+    playInfo?.BackupPlayUrl ||
+    playInfo?.Url ||
+    playInfo?.PlayUrl ||
+    playInfo?.PlayURL ||
+    playInfo?.PlayUri ||
+    ''
+  );
+}
+
+function getPlaybackSource(playInfo, candidate, playInfoList) {
+  return {
+    requestedFormat: candidate.Format,
+    requestedCodec: candidate.Codec || '',
+    selectedFormat: playInfo?.Format || '',
+    selectedCodec: playInfo?.Codec || '',
+    selectedDefinition: playInfo?.Definition || '',
+    availableCount: playInfoList.length,
+  };
+}
+
+async function resolveDefaultPlayback(baseParams) {
+  for (const candidate of DEFAULT_PLAYBACK_CANDIDATES) {
+    try {
+      const playInfoRes = await vodService.GetPlayInfo({
+        ...baseParams,
+        ...candidate,
+      });
+      const playInfoList = getPlayInfoList(playInfoRes);
+
+      if (playInfoList.length > 0) {
+        const selectedPlayInfo =
+          playInfoList.find((playInfo) => Boolean(getPlaybackUrl(playInfo))) ||
+          playInfoList[0] ||
+          {};
+        const playbackUrl = getPlaybackUrl(selectedPlayInfo);
+        const streamType = String(candidate.Format || '').toLowerCase();
+
+        if (playbackUrl) {
+          return {
+            params: { ...baseParams, ...candidate },
+            playbackUrl,
+            streamType,
+            source: getPlaybackSource(selectedPlayInfo, candidate, playInfoList),
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error resolving BytePlus playback candidate:', {
+        vid: baseParams.Vid,
+        format: candidate.Format,
+        error,
+      });
+    }
+  }
+
+  return {
+    params: { ...baseParams, ...DEFAULT_PLAYBACK_PARAMS },
+    playbackUrl: '',
+    streamType: 'hls',
+    source: {
+      requestedFormat: DEFAULT_PLAYBACK_PARAMS.Format,
+      requestedCodec: DEFAULT_PLAYBACK_PARAMS.Codec || '',
+      selectedFormat: '',
+      selectedCodec: '',
+      selectedDefinition: '',
+      availableCount: 0,
+    },
+  };
 }
 
 function getSubtitleLabel(sub, idx) {
@@ -94,7 +202,8 @@ export async function GET(request) {
 
   const spaceName =
     process.env.BYTEPLUS_VOD_SPACE_NAME ||
-    process.env.VOD_SPACE_NAME;
+    process.env.VOD_SPACE_NAME ||
+    'minchapxtiktok';
 
   if (!accessKeyId || !secretAccessKey) {
     return NextResponse.json(
@@ -110,9 +219,35 @@ export async function GET(request) {
     const baseParams = {
       Vid: vid,
       ...(spaceName ? { SpaceName: spaceName } : {}),
+      PlayDomain: process.env.BYTEPLUS_VOD_PLAY_DOMAIN || DEFAULT_PLAY_DOMAIN,
     };
 
-    const playAuthToken = vodService.GetPlayAuthToken(baseParams, 3600);
+    const defaultPlayback = await resolveDefaultPlayback(baseParams);
+
+    if (!defaultPlayback?.playbackUrl) {
+      return NextResponse.json(
+        {
+          error: 'HLS playback source is not available for this video',
+          code: 'HLS_PLAYBACK_NOT_FOUND',
+          playbackSource: defaultPlayback?.source || null,
+        },
+        {
+          status: 404,
+          headers: {
+            'Cache-Control': 'no-store',
+          },
+        }
+      );
+    }
+
+    const signedPlaybackUrl = signCdnUrl(defaultPlayback.playbackUrl);
+    const proxiedPlaybackSource = getHlsProxyUrl(
+      signedPlaybackUrl,
+      request.nextUrl.origin
+    );
+    const playUrl = shouldUseHlsProxy()
+      ? proxiedPlaybackSource
+      : signedPlaybackUrl;
 
     let subtitles = [];
 
@@ -167,9 +302,20 @@ export async function GET(request) {
     }
 
     return NextResponse.json({
-      playAuthToken,
-      playDomain: process.env.BYTEPLUS_VOD_PLAY_DOMAIN || '',
+      defaultPlaybackSource: defaultPlayback.source,
+      preferredPlaybackSource: playUrl,
+      directPlaybackSource: signedPlaybackUrl,
+      proxiedPlaybackSource,
+      isHlsProxyEnabled: shouldUseHlsProxy(),
+      preferredPlaybackStreamType: defaultPlayback.streamType,
+      playFormat: defaultPlayback.streamType,
+      playUrl,
+      playDomain: process.env.BYTEPLUS_VOD_PLAY_DOMAIN || DEFAULT_PLAY_DOMAIN,
       subtitles,
+    }, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
     });
   } catch (error) {
     console.error('Error generating play auth token:', error);
