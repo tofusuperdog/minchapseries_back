@@ -517,49 +517,75 @@ export default function EpisodesPage() {
 
   const saveEpisode = async () => {
     const cleanedVideoLink = videoLink.trim();
+    const numericSeriesId = Number(seriesId);
+    const numericEpisodeNo = Number(selectedEpisode);
 
     if (!cleanedVideoLink) {
       showError('กรุณากรอก vid');
       return;
     }
 
+    if (!Number.isInteger(numericSeriesId) || !Number.isInteger(numericEpisodeNo)) {
+      showError('ข้อมูลตอนไม่ถูกต้อง');
+      return;
+    }
+
     setIsSaving(true);
 
     const payload = {
-      series_id: seriesId,
-      episode_no: selectedEpisode,
+      series_id: numericSeriesId,
+      episode_no: numericEpisodeNo,
       video_url: cleanedVideoLink,
       is_free: isFree,
     };
 
-    const { data, error } = await backofficeMutation(
-      user,
-      'episode',
-      'upsert',
-      payload,
-      {},
-      'series_id,episode_no'
-    );
+    try {
+      const { data, error } = await backofficeMutation(
+        user,
+        'episode',
+        'upsert',
+        payload,
+        {},
+        'series_id,episode_no'
+      );
 
-    if (error) {
-      alert('บันทึกผิดพลาด: ' + error.message);
-    } else {
-      setSavedEpisodes((prev) => {
-        const others = prev.filter(
-          (e) => e.episode_no !== selectedEpisode
-        );
+      if (error) {
+        alert('บันทึกผิดพลาด: ' + error.message);
+        return;
+      }
 
-        if (data && data.length > 0) {
-          return [...others, data[0]];
-        }
+      const { data: refreshedEpisodes, error: refreshError } =
+        await backofficeQuery(user, 'episodes_by_series', {
+          series_id: numericSeriesId,
+        });
 
-        return [...others, payload];
-      });
+      if (refreshError) {
+        const savedEpisode =
+          Array.isArray(data) && data.length > 0 ? data[0] : payload;
+
+        setSavedEpisodes((prev) => {
+          const others = prev.filter(
+            (e) => Number(e.episode_no) !== numericEpisodeNo
+          );
+
+          return [...others, savedEpisode].sort(
+            (a, b) => Number(a.episode_no) - Number(b.episode_no)
+          );
+        });
+      } else if (Array.isArray(refreshedEpisodes)) {
+        setSavedEpisodes(refreshedEpisodes);
+      }
 
       closeModal();
+    } catch (error) {
+      console.error('Error saving episode:', error);
+      alert(
+        'บันทึกผิดพลาด: ' +
+          (error?.message || 'Request failed')
+      );
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
   };
 
   useEffect(() => {
