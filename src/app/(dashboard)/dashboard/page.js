@@ -9,12 +9,12 @@ export const revalidate = 0; // opt out of static rendering
 export default async function OverviewPage() {
   // Fetch real data to compute statistics
   const { data: seriesData } = await supabase.from('series').select('id, status, total_episodes');
-  const { data: epData } = await supabase.from('episode').select('series_id');
+  const { data: epData } = await supabase.rpc('public_episode_counts');
 
   const episodeCounts = {};
   if (epData) {
-    epData.forEach(ep => {
-      episodeCounts[ep.series_id] = (episodeCounts[ep.series_id] || 0) + 1;
+    epData.forEach(item => {
+      episodeCounts[item.series_id] = item.count || 0;
     });
   }
 

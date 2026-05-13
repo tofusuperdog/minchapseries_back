@@ -4,7 +4,6 @@ import { forwardRef, useImperativeHandle, useState, useEffect, useRef } from 're
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { backofficeMutation, backofficeQuery } from '@/lib/backoffice';
 import '@byteplus/veplayer/index.min.css';
@@ -163,8 +162,7 @@ const VePlayerComponent = forwardRef(function VePlayerComponent({
         const normalizedSubtitles = validSubtitles.map(normalizeSubtitle);
 
         const playerConfig = {
-          id: playerId,
-          vid,
+          root: containerRef.current,
           streamType: 'hls',
           codec: 'h264',
           lang: 'en',
@@ -416,7 +414,11 @@ export default function EpisodesPage() {
 
     try {
       const res = await fetch(
-        `/api/vod/playauth?vid=${encodeURIComponent(cleanVid)}`
+        `/api/vod/playauth?vid=${encodeURIComponent(cleanVid)}`,
+        {
+          cache: 'no-store',
+          credentials: 'include',
+        }
       );
 
       const data = await res.json();
@@ -564,21 +566,15 @@ export default function EpisodesPage() {
     async function fetchData() {
       if (!seriesId) return;
 
-      const { data: authData } = await supabase.auth.getUser();
-
-      if (authData?.user?.id) {
-        setCurrentUserId(authData.user.id);
+      if (user?.id) {
+        setCurrentUserId(String(user.id));
       }
 
       const { data: gData } = await backofficeQuery(user, 'genres');
 
       if (gData) setGenres(gData);
 
-      const { data: sData, error: sError } = await supabase
-        .from('series')
-        .select('*')
-        .eq('id', seriesId)
-        .single();
+      const { data: sData, error: sError } = await backofficeQuery(user, 'series_by_id', { id: seriesId });
 
       if (sError || !sData) {
         console.error('Error fetching series data:', sError);
@@ -587,10 +583,7 @@ export default function EpisodesPage() {
         return;
       }
 
-      const { data: epData } = await supabase
-        .from('episode')
-        .select('*')
-        .eq('series_id', seriesId);
+      const { data: epData } = await backofficeQuery(user, 'episodes_by_series', { series_id: seriesId });
 
       if (epData) setSavedEpisodes(epData);
 
@@ -599,7 +592,7 @@ export default function EpisodesPage() {
     }
 
     fetchData();
-  }, [seriesId, router]);
+  }, [seriesId, router, user]);
 
   if (loading || !series) {
     return (

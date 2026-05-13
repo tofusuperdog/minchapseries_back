@@ -60,20 +60,26 @@ export default function Home() {
 
     setIsLoading(true);
 
-    const { data, error: dbError } = await supabase
-      .rpc("backoffice_login", {
-        p_username: username.trim(),
-        p_password: password.trim(),
-      })
-      .maybeSingle();
+    const response = await fetch("/api/backoffice/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        username: username.trim(),
+        password: password.trim(),
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
 
-    if (dbError || !data) {
+    if (!response.ok || !data.user) {
       showErrorMsg("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
       setIsLoading(false);
       return;
     }
 
-    login(data);
+    login(data.user);
     router.push("/dashboard");
   };
 

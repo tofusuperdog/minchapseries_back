@@ -112,15 +112,15 @@ export default function SeriesPage() {
       if (genresData) setGenres(genresData);
 
       // Fetch series
-      const { data: seriesData } = await supabase.from('series').select('*');
+      const { data: seriesData } = await backofficeQuery(user, 'series');
       if (seriesData) setSeries(seriesData);
 
       // Fetch episode counts
-      const { data: epData } = await supabase.from('episode').select('series_id');
+      const { data: epData } = await backofficeQuery(user, 'episode_counts');
       if (epData) {
         const counts = {};
-        epData.forEach(ep => {
-          counts[ep.series_id] = (counts[ep.series_id] || 0) + 1;
+        epData.forEach(item => {
+          counts[item.series_id] = item.count || 0;
         });
         setEpisodeCounts(counts);
       }

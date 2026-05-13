@@ -1,9 +1,8 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { backofficeMutation, backofficeQuery } from '@/lib/backoffice';
+import { backofficeQuery, backofficeUserMutation } from '@/lib/backoffice';
 
 const permissionColumns = [
   { key: 'dashboard', label: 'ภาพรวม', icon: '/dashboard.svg', alwaysOn: true },
@@ -321,18 +320,16 @@ export default function UsersPage() {
     setIsSaving(true);
 
     if (modalMode === 'add') {
-      const { error } = await supabase
-        .rpc('backoffice_users_create_secure', {
-          p_session_token: user.session_token,
-          p_username: trimmedUsername,
-          p_password: rawPassword,
-          p_perm_series: formData.perm_series,
-          p_perm_genres: formData.perm_genres,
-          p_perm_displays: formData.perm_displays,
-          p_perm_sales: formData.perm_sales,
-          p_perm_customers: formData.perm_customers,
-          p_perm_users: formData.perm_users,
-        });
+      const { error } = await backofficeUserMutation(user, 'create', {
+        username: trimmedUsername,
+        password: rawPassword,
+        perm_series: formData.perm_series,
+        perm_genres: formData.perm_genres,
+        perm_displays: formData.perm_displays,
+        perm_sales: formData.perm_sales,
+        perm_customers: formData.perm_customers,
+        perm_users: formData.perm_users,
+      });
 
       if (error) {
         console.error('Error adding user:', error);
@@ -341,19 +338,17 @@ export default function UsersPage() {
         return;
       }
     } else if (modalMode === 'edit' && editingUser) {
-      const { error } = await supabase
-        .rpc('backoffice_users_update_secure', {
-          p_session_token: user.session_token,
-          p_user_id: editingUser.id,
-          p_username: trimmedUsername,
-          p_password: rawPassword,
-          p_perm_series: formData.perm_series,
-          p_perm_genres: formData.perm_genres,
-          p_perm_displays: formData.perm_displays,
-          p_perm_sales: formData.perm_sales,
-          p_perm_customers: formData.perm_customers,
-          p_perm_users: formData.perm_users,
-        });
+      const { error } = await backofficeUserMutation(user, 'update', {
+        user_id: editingUser.id,
+        username: trimmedUsername,
+        password: rawPassword,
+        perm_series: formData.perm_series,
+        perm_genres: formData.perm_genres,
+        perm_displays: formData.perm_displays,
+        perm_sales: formData.perm_sales,
+        perm_customers: formData.perm_customers,
+        perm_users: formData.perm_users,
+      });
 
       if (error) {
         console.error('Error updating user:', error);
@@ -380,11 +375,9 @@ export default function UsersPage() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
 
-    const { error } = await supabase
-      .rpc('backoffice_users_delete_secure', {
-        p_session_token: user.session_token,
-        p_user_id: deleteTarget.id,
-      });
+    const { error } = await backofficeUserMutation(user, 'delete', {
+      user_id: deleteTarget.id,
+    });
 
     if (error) {
       console.error('Error deleting user:', error);

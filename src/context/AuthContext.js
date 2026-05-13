@@ -9,31 +9,41 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load user from sessionStorage on mount
-    const stored = sessionStorage.getItem('cms_user');
-    if (stored) {
+    let cancelled = false;
+
+    async function loadSession() {
       try {
-        const parsed = JSON.parse(stored);
-        if (parsed?.session_token) {
-          setUser(parsed);
-        } else {
-          sessionStorage.removeItem('cms_user');
+        const res = await fetch('/api/backoffice/session', {
+          cache: 'no-store',
+          credentials: 'include',
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!cancelled && res.ok && data.user) {
+          setUser(data.user);
         }
-      } catch {
-        sessionStorage.removeItem('cms_user');
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
-    setLoading(false);
+
+    loadSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = (userData) => {
     setUser(userData);
-    sessionStorage.setItem('cms_user', JSON.stringify(userData));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await fetch('/api/backoffice/logout', {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => {});
     setUser(null);
-    sessionStorage.removeItem('cms_user');
   };
 
   // Permission check helper

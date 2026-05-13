@@ -1,0 +1,4 @@
+(node:45032) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[browser] Image with src "https://vxskkaxvlgycokdtuocj.supabase.co/storage/v1/object/public/posters/posters/1777597935634-j5hp6.webp" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading

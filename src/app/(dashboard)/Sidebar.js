@@ -69,8 +69,8 @@ export default function Sidebar() {
     return user && user[item.permKey];
   });
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/');
   };
 

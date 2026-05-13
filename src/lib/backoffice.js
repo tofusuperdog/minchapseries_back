@@ -1,20 +1,31 @@
-import { supabase } from '@/lib/supabase';
+export function getSessionToken() {
+  return null;
+}
 
-export function getSessionToken(user) {
-  return user?.session_token || null;
+async function postBackoffice(path, body) {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    return { data: null, error: { message: result.error || 'Request failed' } };
+  }
+
+  return { data: result.data ?? null, error: null };
 }
 
 export async function backofficeQuery(user, resource, params = {}) {
-  const token = getSessionToken(user);
-  if (!token) {
+  if (!user) {
     return { data: null, error: { message: 'Missing back office session' } };
   }
 
-  return supabase.rpc('backoffice_query', {
-    p_session_token: token,
-    p_resource: resource,
-    p_params: params,
-  });
+  return postBackoffice('/api/backoffice/query', { resource, params });
 }
 
 export async function backofficeMutation(
@@ -25,17 +36,23 @@ export async function backofficeMutation(
   filter = {},
   onConflict = null
 ) {
-  const token = getSessionToken(user);
-  if (!token) {
+  if (!user) {
     return { data: null, error: { message: 'Missing back office session' } };
   }
 
-  return supabase.rpc('backoffice_mutation', {
-    p_session_token: token,
-    p_table: table,
-    p_action: action,
-    p_payload: payload,
-    p_filter: filter,
-    p_on_conflict: onConflict,
+  return postBackoffice('/api/backoffice/mutation', {
+    table,
+    action,
+    payload,
+    filter,
+    onConflict,
   });
+}
+
+export async function backofficeUserMutation(user, action, payload = {}) {
+  if (!user) {
+    return { data: null, error: { message: 'Missing back office session' } };
+  }
+
+  return postBackoffice('/api/backoffice/users', { action, ...payload });
 }

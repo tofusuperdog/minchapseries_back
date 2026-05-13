@@ -1,0 +1,19 @@
+
+> minchapxtiktokback@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.145:3000
+- Environments: .env.local
+✓ Ready in 243ms
+Creating turbopack project { dir: 'D:\\work\\minchapxtiktokback', testMode: true }
+
+ GET /series/18/episodes 200 in 600ms (next.js: 483ms, application-code: 117ms)
+ GET /api/backoffice/session 200 in 1288ms (next.js: 41ms, application-code: 1247ms)
+ POST /api/backoffice/query 200 in 176ms (next.js: 15ms, application-code: 161ms)
+ POST /api/backoffice/query 200 in 331ms (next.js: 19ms, application-code: 312ms)
+ POST /api/backoffice/query 200 in 145ms (next.js: 1241µs, application-code: 144ms)
+ POST /api/backoffice/query 200 in 426ms (next.js: 1258µs, application-code: 425ms)
+ POST /api/backoffice/query 200 in 155ms (next.js: 1198µs, application-code: 153ms)
+ POST /api/backoffice/query 200 in 187ms (next.js: 1297µs, application-code: 186ms)

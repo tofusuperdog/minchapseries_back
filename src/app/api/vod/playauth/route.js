@@ -5,6 +5,9 @@ import {
   shouldUseHlsProxy,
   signCdnUrl,
 } from '@/lib/byteplusCdn';
+import {
+  getBackofficeUserFromRequest,
+} from '@/lib/backofficeServer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -189,6 +192,22 @@ export async function GET(request) {
     return NextResponse.json(
       { error: 'Missing vid parameter' },
       { status: 400 }
+    );
+  }
+
+  const { user } = await getBackofficeUserFromRequest(request);
+
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+
+  if (!user.is_admin && !user.perm_series) {
+    return NextResponse.json(
+      { error: 'Forbidden' },
+      { status: 403 }
     );
   }
 
