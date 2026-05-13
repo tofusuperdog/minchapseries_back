@@ -5,6 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { backofficeMutation, backofficeQuery } from '@/lib/backoffice';
 import '@byteplus/veplayer/index.min.css';
 
 const getSubtitleId = (sub, idx) =>
@@ -345,6 +347,7 @@ const LockIcon = () => (
 );
 
 export default function EpisodesPage() {
+  const { user } = useAuth();
   const router = useRouter();
   const { id: seriesId } = useParams();
 
@@ -472,11 +475,13 @@ export default function EpisodesPage() {
 
     setIsDeleting(true);
 
-    const { error } = await supabase
-      .from('episode')
-      .delete()
-      .eq('series_id', seriesId)
-      .eq('episode_no', episodeToDelete);
+    const { error } = await backofficeMutation(
+      user,
+      'episode',
+      'delete',
+      {},
+      { series_id: seriesId, episode_no: episodeToDelete }
+    );
 
     if (!error) {
       setSavedEpisodes((prev) =>
@@ -525,10 +530,14 @@ export default function EpisodesPage() {
       is_free: isFree,
     };
 
-    const { data, error } = await supabase
-      .from('episode')
-      .upsert(payload, { onConflict: 'series_id, episode_no' })
-      .select('*');
+    const { data, error } = await backofficeMutation(
+      user,
+      'episode',
+      'upsert',
+      payload,
+      {},
+      'series_id,episode_no'
+    );
 
     if (error) {
       alert('บันทึกผิดพลาด: ' + error.message);
@@ -561,9 +570,7 @@ export default function EpisodesPage() {
         setCurrentUserId(authData.user.id);
       }
 
-      const { data: gData } = await supabase
-        .from('genre')
-        .select('id, name_th');
+      const { data: gData } = await backofficeQuery(user, 'genres');
 
       if (gData) setGenres(gData);
 

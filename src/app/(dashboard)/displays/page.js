@@ -2,6 +2,8 @@
 import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { backofficeMutation, backofficeQuery } from '@/lib/backoffice';
 
 function BannerEditModal({ isOpen, onClose, bannerIndex, seriesList, onSave, isSaving, currentSeriesId }) {
   const [selectedSeriesId, setSelectedSeriesId] = useState('');
@@ -351,7 +353,7 @@ function CategoryDeleteModal({ category, isOpen, onClose, onConfirm, isSaving })
   );
 }
 
-function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) {
+function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete, user }) {
   const [names, setNames] = useState({ th: '', en: '', jp: '', cn: '' });
   const [selectedIds, setSelectedIds] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -396,9 +398,11 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
     }
     setIsSaving(true);
     const newBadgeText = `${selectedIds.length} ซีรีส์`;
-    const { error: dbError } = await supabase
-      .from('content_categories')
-      .update({ 
+    const { error: dbError } = await backofficeMutation(
+      user,
+      'content_categories',
+      'update',
+      {
         name: names.th.trim(), // Keep name as name_th for compatibility
         name_th: names.th.trim(),
         name_en: names.en.trim(),
@@ -407,8 +411,9 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
         series_ids: selectedIds, 
         badge_text: newBadgeText, 
         updated_at: new Date().toISOString() 
-      })
-      .eq('id', category.id);
+      },
+      { id: category.id }
+    );
       
     setIsSaving(false);
     if (dbError) {
@@ -424,10 +429,13 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
 
   const handleConfirmDelete = async () => {
     setIsSaving(true);
-    const { error: dbError } = await supabase
-      .from('content_categories')
-      .delete()
-      .eq('id', category.id);
+    const { error: dbError } = await backofficeMutation(
+      user,
+      'content_categories',
+      'delete',
+      {},
+      { id: category.id }
+    );
     setIsSaving(false);
     
     if (dbError) {
@@ -551,7 +559,7 @@ function CategoryEditModal({ category, onClose, seriesList, onSave, onDelete }) 
 }
 
 
-function TopSeriesModal({ isOpen, onClose, seriesList }) {
+function TopSeriesModal({ isOpen, onClose, seriesList, user }) {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [currentTopSeries, setCurrentTopSeries] = useState([]); 
@@ -688,9 +696,10 @@ function TopSeriesModal({ isOpen, onClose, seriesList }) {
       });
     }
 
-    const { error: upsertError } = await supabase
-      .from('top_series')
-      .upsert(payload, { onConflict: 'rank' });
+    const results = await Promise.all(payload.map(item =>
+      backofficeMutation(user, 'top_series', 'upsert', item, {}, 'rank')
+    ));
+    const upsertError = results.find(result => result.error)?.error;
 
     setIsSaving(false);
     if (upsertError) {
@@ -808,6 +817,7 @@ function TopSeriesModal({ isOpen, onClose, seriesList }) {
 }
 
 export default function DisplaysPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('main_banner');
   const [seriesList, setSeriesList] = useState([]);
   const [editingBanner, setEditingBanner] = useState(null);
@@ -868,6 +878,8 @@ export default function DisplaysPage() {
   };
 
   const fetchInitialData = async () => {
+    if (!user?.id) return;
+
     setLoading(true);
     // Fetch series
     const { data: sData, error: sError } = await supabase
@@ -895,20 +907,14 @@ export default function DisplaysPage() {
     }
 
     // Fetch categories
-    const { data: cData, error: cError } = await supabase
-      .from('content_categories')
-      .select('*')
-      .order('sort_order', { ascending: true });
+    const { data: cData, error: cError } = await backofficeQuery(user, 'content_categories');
     
     if (!cError && cData) {
       setContentCategories(cData);
     }
 
     // Fetch dubbed languages
-    const { data: dlData, error: dlError } = await supabase
-      .from('dubbed_languages')
-      .select('*')
-      .order('sort_order', { ascending: true });
+    const { data: dlData, error: dlError } = await backofficeQuery(user, 'dubbed_languages');
       
     if (!dlError && dlData) {
       setDubbedLanguages(dlData);
@@ -923,7 +929,7 @@ export default function DisplaysPage() {
     setDubbedLanguages(updatedLangs);
     
     // 2. DB Update
-    await supabase.from('dubbed_languages').update({ is_published: newStatus }).eq('id', id);
+    await backofficeMutation(user, 'dubbed_languages', 'update', { is_published: newStatus }, { id });
     
     // 3. Update "content_categories" badge text and force is_published to false
     const activeTags = updatedLangs.filter(l => l.is_published).map(l => l.code.toUpperCase());
@@ -933,21 +939,26 @@ export default function DisplaysPage() {
     if (cat) {
       const updatedCat = { ...cat, badge_text: newBadgeText, is_published: false };
       setContentCategories(prev => prev.map(c => c.id === cat.id ? updatedCat : c));
-      await supabase.from('content_categories').update({ badge_text: newBadgeText, is_published: false }).eq('id', cat.id);
+      await backofficeMutation(user, 'content_categories', 'update', { badge_text: newBadgeText, is_published: false }, { id: cat.id });
     }
   };
 
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [user?.id]);
 
   const handleSaveBanner = async (bannerIndex, seriesId) => {
     if (!seriesId) return;
     setIsSaving(true);
 
-    const { error } = await supabase
-      .from('main_banner')
-      .upsert({ id: bannerIndex, series_id: parseInt(seriesId), updated_at: new Date().toISOString() });
+    const { error } = await backofficeMutation(
+      user,
+      'main_banner',
+      'upsert',
+      { id: bannerIndex, series_id: parseInt(seriesId), updated_at: new Date().toISOString() },
+      {},
+      'id'
+    );
 
     setIsSaving(false);
 
@@ -977,10 +988,7 @@ export default function DisplaysPage() {
       }
     }
 
-    const { error } = await supabase
-      .from('content_categories')
-      .update({ is_published: !currentStatus })
-      .eq('id', id);
+    const { error } = await backofficeMutation(user, 'content_categories', 'update', { is_published: !currentStatus }, { id });
     if (!error) {
       setContentCategories(prev => prev.map(c => c.id === id ? { ...c, is_published: !currentStatus } : c));
     } else {
@@ -1008,8 +1016,8 @@ export default function DisplaysPage() {
 
     // Update in DB
     await Promise.all([
-      supabase.from('content_categories').update({ sort_order: currentCat.sort_order }).eq('id', currentCat.id),
-      supabase.from('content_categories').update({ sort_order: targetCat.sort_order }).eq('id', targetCat.id)
+      backofficeMutation(user, 'content_categories', 'update', { sort_order: currentCat.sort_order }, { id: currentCat.id }),
+      backofficeMutation(user, 'content_categories', 'update', { sort_order: targetCat.sort_order }, { id: targetCat.id })
     ]);
   };
 
@@ -1043,10 +1051,12 @@ export default function DisplaysPage() {
       sort_order: 1 // Temporarily, will be recalculated
     };
 
-    const { data: insertedData, error } = await supabase
-      .from('content_categories')
-      .insert([newCategoryObj])
-      .select();
+    const { data: insertedData, error } = await backofficeMutation(
+      user,
+      'content_categories',
+      'insert',
+      newCategoryObj
+    );
 
     if (error || !insertedData || insertedData.length === 0) {
       alert('เกิดข้อผิดพลาดในการเพิ่มหมวดคอนเทนต์');
@@ -1066,7 +1076,7 @@ export default function DisplaysPage() {
     setContentCategories(updatedCategories);
 
     const updates = updatedCategories.map(u => 
-      supabase.from('content_categories').update({ sort_order: u.sort_order }).eq('id', u.id)
+      backofficeMutation(user, 'content_categories', 'update', { sort_order: u.sort_order }, { id: u.id })
     );
     await Promise.all(updates);
 
@@ -1099,7 +1109,7 @@ export default function DisplaysPage() {
     setDragOverIndex(null);
     
     // Save to DB
-    await Promise.all(updatedCategories.map(u => supabase.from('content_categories').update({ sort_order: u.sort_order }).eq('id', u.id)));
+    await Promise.all(updatedCategories.map(u => backofficeMutation(user, 'content_categories', 'update', { sort_order: u.sort_order }, { id: u.id })));
   };
 
   const tabs = [
@@ -1377,6 +1387,7 @@ export default function DisplaysPage() {
         isOpen={isTopSeriesModalOpen}
         onClose={() => setIsTopSeriesModalOpen(false)}
         seriesList={seriesList}
+        user={user}
       />
 
       <CategoryEditModal
@@ -1385,6 +1396,7 @@ export default function DisplaysPage() {
         seriesList={seriesList}
         onSave={handleSaveCategoryEdit}
         onDelete={handleDeleteCategory}
+        user={user}
       />
     </div>
   );

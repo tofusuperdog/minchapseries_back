@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { backofficeMutation, backofficeQuery } from '@/lib/backoffice';
 
 // Helper for pill toggles
 function LangToggle({ label, active, onClick }) {
@@ -22,6 +24,7 @@ function LangToggle({ label, active, onClick }) {
 }
 
 export default function EditSeriesPage() {
+  const { user } = useAuth();
   const router = useRouter();
   const { id: seriesId } = useParams();
 
@@ -88,10 +91,7 @@ export default function EditSeriesPage() {
   useEffect(() => {
     async function fetchData() {
       // Fetch genres
-      const { data: gData, error: gError } = await supabase
-        .from('genre')
-        .select('id, name_th')
-        .order('name_th', { ascending: true });
+      const { data: gData, error: gError } = await backofficeQuery(user, 'genres');
 
       if (!gError && gData) {
         setGenres(gData);
@@ -248,10 +248,7 @@ export default function EditSeriesPage() {
     }
 
     // Update DB
-    const { error: dbError } = await supabase
-      .from('series')
-      .update(updateFields)
-      .eq('id', seriesId);
+    const { error: dbError } = await backofficeMutation(user, 'series', 'update', updateFields, { id: seriesId });
 
     if (dbError) {
       console.error('Error updating series:', dbError);
@@ -269,10 +266,8 @@ export default function EditSeriesPage() {
 
     try {
       // 1. Fetch categories that contain this series in their series_ids array
-      const { data: categories, error: fetchError } = await supabase
-        .from('content_categories')
-        .select('id, series_ids')
-        .contains('series_ids', [parseInt(seriesId)]);
+      const { data: allCategories, error: fetchError } = await backofficeQuery(user, 'content_categories');
+      const categories = (allCategories || []).filter(cat => cat.series_ids?.includes(parseInt(seriesId)));
 
       if (!fetchError && categories && categories.length > 0) {
         // 2. Update each affected category
@@ -280,21 +275,24 @@ export default function EditSeriesPage() {
           const updatedIds = cat.series_ids.filter(id => String(id) !== String(seriesId));
           const newBadgeText = `${updatedIds.length} ซีรีส์`;
           
-          await supabase
-            .from('content_categories')
-            .update({
+          await backofficeMutation(
+            user,
+            'content_categories',
+            'update',
+            {
               series_ids: updatedIds,
               badge_text: newBadgeText,
               updated_at: new Date().toISOString()
-            })
-            .eq('id', cat.id);
+            },
+            { id: cat.id }
+          );
         }
       }
 
       // Attempt explicit episode removal to satisfy foreign-key constraints if cascade is off
-      await supabase.from('episode').delete().eq('series_id', seriesId);
+      await backofficeMutation(user, 'episode', 'delete', {}, { series_id: seriesId });
 
-      const { error } = await supabase.from('series').delete().eq('id', seriesId);
+      const { error } = await backofficeMutation(user, 'series', 'delete', {}, { id: seriesId });
       if (error) {
         console.error('Error deleting series:', error);
         showError('ไม่สามารถลบซีรีส์ได้ เนื่องจากเกิดข้อผิดพลาด: ' + (error.message || ''));

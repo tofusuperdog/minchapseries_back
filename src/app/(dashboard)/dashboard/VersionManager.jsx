@@ -1,8 +1,11 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { backofficeMutation, backofficeQuery } from '@/lib/backoffice';
 
 export default function VersionManager() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('back_office'); // back_office, website, app
   const [versions, setVersions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,11 +45,9 @@ export default function VersionManager() {
 
   const fetchVersions = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('system_versions')
-      .select('*')
-      .eq('system_type', activeTab)
-      .order('release_date', { ascending: false });
+    const { data, error } = await backofficeQuery(user, 'system_versions', {
+      system_type: activeTab,
+    });
 
     if (!error && data) {
       setVersions(data);
@@ -59,15 +60,10 @@ export default function VersionManager() {
     const results = {};
 
     for (const sys of systems) {
-      const { data, error } = await supabase
-        .from('system_versions')
-        .select('version_number')
-        .eq('system_type', sys)
-        .order('release_date', { ascending: false })
-        .limit(1);
+      const { data, error } = await backofficeQuery(user, 'latest_system_versions');
 
-      if (!error && data && data.length > 0) {
-        results[sys] = data[0].version_number;
+      if (!error && data && data[sys]) {
+        results[sys] = data[sys];
       } else {
         results[sys] = 'ไม่มีข้อมูล';
       }
@@ -115,7 +111,7 @@ export default function VersionManager() {
   const confirmDelete = async () => {
     if (!deletingId) return;
 
-    const { error } = await supabase.from('system_versions').delete().eq('id', deletingId);
+    const { error } = await backofficeMutation(user, 'system_versions', 'delete', {}, { id: deletingId });
     if (error) {
       displayError('เกิดข้อผิดพลาดในการลบข้อมูล');
     } else {
@@ -162,15 +158,10 @@ export default function VersionManager() {
 
     let error;
     if (editingId) {
-      const { error: updateError } = await supabase
-        .from('system_versions')
-        .update(payload)
-        .eq('id', editingId);
+      const { error: updateError } = await backofficeMutation(user, 'system_versions', 'update', payload, { id: editingId });
       error = updateError;
     } else {
-      const { error: insertError } = await supabase
-        .from('system_versions')
-        .insert([payload]);
+      const { error: insertError } = await backofficeMutation(user, 'system_versions', 'insert', payload);
       error = insertError;
     }
 

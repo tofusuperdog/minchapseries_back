@@ -13,7 +13,12 @@ export function AuthProvider({ children }) {
     const stored = sessionStorage.getItem('cms_user');
     if (stored) {
       try {
-        setUser(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        if (parsed?.session_token) {
+          setUser(parsed);
+        } else {
+          sessionStorage.removeItem('cms_user');
+        }
       } catch {
         sessionStorage.removeItem('cms_user');
       }

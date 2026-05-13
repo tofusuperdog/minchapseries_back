@@ -3,6 +3,8 @@ import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import { backofficeMutation, backofficeQuery } from "@/lib/backoffice";
 
 function GenreModal({ isOpen, title, formData, setFormData, onClose, onSave, isSaving }) {
   const [error, setError] = useState('');
@@ -175,6 +177,7 @@ function DeleteConfirmModal({ isOpen, genre, onClose, onConfirm, isDeleting }) {
 }
 
 export default function GenresPage() {
+  const { user } = useAuth();
   const [genres, setGenres] = useState([]);
   const [allSeries, setAllSeries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -203,11 +206,7 @@ export default function GenresPage() {
     setLoading(true);
 
     // Fetch genres
-    const { data: gData, error: gError } = await supabase
-      .from('genre')
-      .select('*')
-      .order('sort_order', { ascending: true })
-      .order('id', { ascending: true });
+    const { data: gData, error: gError } = await backofficeQuery(user, 'genres');
 
     if (!gError && gData) {
       setGenres(gData);
@@ -258,7 +257,7 @@ export default function GenresPage() {
 
     if (modalMode === 'add') {
       const maxSortOrder = genres.length > 0 ? Math.max(...genres.map(g => g.sort_order || 0)) : 0;
-      const { error: insertError } = await supabase.from('genre').insert({
+      const { error: insertError } = await backofficeMutation(user, 'genre', 'insert', {
         name_th: formData.th.trim(),
         name_en: formData.en.trim() || null,
         name_jp: formData.jp.trim() || null,
@@ -268,12 +267,12 @@ export default function GenresPage() {
       });
       error = insertError;
     } else if (modalMode === 'edit' && editingGenre) {
-      const { error: updateError } = await supabase.from('genre').update({
+      const { error: updateError } = await backofficeMutation(user, 'genre', 'update', {
         name_th: formData.th.trim(),
         name_en: formData.en.trim() || null,
         name_jp: formData.jp.trim() || null,
         name_cn: formData.cn.trim() || null,
-      }).eq('id', editingGenre.id);
+      }, { id: editingGenre.id });
       error = updateError;
     }
 
@@ -311,13 +310,13 @@ export default function GenresPage() {
     if (seriesToUpdate.length > 0) {
       const updatePromises = seriesToUpdate.map(s => {
         const newGenreIds = s.genre_ids.filter(id => id !== genreId);
-        return supabase.from('series').update({ genre_ids: newGenreIds }).eq('id', s.id);
+        return backofficeMutation(user, 'series', 'update', { genre_ids: newGenreIds }, { id: s.id });
       });
       await Promise.all(updatePromises);
     }
 
     // 3. Delete genre
-    const { error } = await supabase.from('genre').delete().eq('id', genreId);
+    const { error } = await backofficeMutation(user, 'genre', 'delete', {}, { id: genreId });
 
     setIsDeleting(false);
 
@@ -336,10 +335,7 @@ export default function GenresPage() {
     // Optimistic update
     setGenres(genres.map(g => g.id === genre.id ? { ...g, is_published: newStatus } : g));
 
-    const { error } = await supabase
-      .from('genre')
-      .update({ is_published: newStatus })
-      .eq('id', genre.id);
+    const { error } = await backofficeMutation(user, 'genre', 'update', { is_published: newStatus }, { id: genre.id });
 
     if (error) {
       console.error('Error toggling publish:', error);
@@ -366,10 +362,10 @@ export default function GenresPage() {
       sort_order: i
     }));
 
-    // Supabase upsert for bulk update
-    const { error } = await supabase
-      .from('genre')
-      .upsert(updates);
+    const results = await Promise.all(updates.map(g =>
+      backofficeMutation(user, 'genre', 'upsert', g, {}, 'id')
+    ));
+    const error = results.find(result => result.error)?.error;
 
     if (error) {
       console.error('Error updating order:', error);

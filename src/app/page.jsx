@@ -30,16 +30,10 @@ export default function Home() {
 
   useEffect(() => {
     const fetchLatestVersion = async () => {
-      const { data } = await supabase
-        .from("system_versions")
-        .select("version_number")
-        .eq("system_type", "back_office")
-        .order("release_date", { ascending: false })
-        .limit(1)
-        .single();
+      const { data } = await supabase.rpc("public_backoffice_version");
 
-      if (data && data.version_number) {
-        setSysVersion(data.version_number);
+      if (data) {
+        setSysVersion(data);
       }
     };
 
@@ -67,11 +61,11 @@ export default function Home() {
     setIsLoading(true);
 
     const { data, error: dbError } = await supabase
-      .from("user")
-      .select("*")
-      .eq("username", username.trim())
-      .eq("password", password.trim())
-      .single();
+      .rpc("backoffice_login", {
+        p_username: username.trim(),
+        p_password: password.trim(),
+      })
+      .maybeSingle();
 
     if (dbError || !data) {
       showErrorMsg("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");

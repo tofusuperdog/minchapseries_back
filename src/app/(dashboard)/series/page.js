@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { backofficeMutation, backofficeQuery } from '@/lib/backoffice';
 
 // Minor badges for language
 function LangBadge({ label, active }) {
@@ -73,6 +75,7 @@ function StatusColumn({ status, missingEpisodes, seriesId, onPublish, onUnpublis
 }
 
 export default function SeriesPage() {
+  const { user } = useAuth();
   const [series, setSeries] = useState([]);
   const [genres, setGenres] = useState([]);
   const [episodeCounts, setEpisodeCounts] = useState({});
@@ -105,7 +108,7 @@ export default function SeriesPage() {
     async function fetchData() {
       setLoading(true);
       // Fetch genres
-      const { data: genresData } = await supabase.from('genre').select('id, name_th');
+      const { data: genresData } = await backofficeQuery(user, 'genres');
       if (genresData) setGenres(genresData);
 
       // Fetch series
@@ -128,7 +131,7 @@ export default function SeriesPage() {
   }, []);
 
   const handlePublish = async (id) => {
-    const { error } = await supabase.from('series').update({ status: 'published' }).eq('id', id);
+    const { error } = await backofficeMutation(user, 'series', 'update', { status: 'published' }, { id });
     if (!error) {
       setSeries(prev => prev.map(s => s.id === id ? { ...s, status: 'published' } : s));
     }
@@ -151,7 +154,7 @@ export default function SeriesPage() {
       return;
     }
 
-    const { error } = await supabase.from('series').update({ status: 'not_ready' }).eq('id', id);
+    const { error } = await backofficeMutation(user, 'series', 'update', { status: 'not_ready' }, { id });
     if (!error) {
       setSeries(prev => prev.map(s => s.id === id ? { ...s, status: 'not_ready' } : s));
     } else {

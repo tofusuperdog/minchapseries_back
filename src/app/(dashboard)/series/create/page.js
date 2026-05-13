@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { backofficeMutation, backofficeQuery } from '@/lib/backoffice';
 
 // Helper for pill toggles
 function LangToggle({ label, active, onClick }) {
@@ -23,6 +25,7 @@ function LangToggle({ label, active, onClick }) {
 }
 
 export default function CreateSeriesPage() {
+  const { user } = useAuth();
   const router = useRouter();
   
   // State
@@ -70,10 +73,7 @@ export default function CreateSeriesPage() {
   // Fetch Genres
   useEffect(() => {
     async function fetchGenres() {
-      const { data, error } = await supabase
-        .from('genre')
-        .select('id, name_th')
-        .order('name_th', { ascending: true });
+      const { data, error } = await backofficeQuery(user, 'genres');
         
       if (!error && data) {
         setGenres(data);
@@ -165,9 +165,11 @@ export default function CreateSeriesPage() {
     }
     
     // 2. Insert to DB
-    const { data: seriesData, error: dbError } = await supabase
-      .from('series')
-      .insert({
+    const { data: seriesData, error: dbError } = await backofficeMutation(
+      user,
+      'series',
+      'insert',
+      {
         title_th: formData.title_th,
         title_en: formData.title_en,
         title_jp: formData.title_jp,
@@ -183,7 +185,8 @@ export default function CreateSeriesPage() {
         sub_jp: formData.sub_jp,
         sub_cn: formData.sub_cn,
         poster_url: poster_url
-      });
+      }
+    );
       
     if (dbError) {
       console.error('Error saving series:', dbError);

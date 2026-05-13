@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { backofficeMutation } from '@/lib/backoffice';
 
 function CustomRadio({ checked, onChange }) {
   return (
@@ -17,6 +19,7 @@ function CustomRadio({ checked, onChange }) {
 }
 
 export default function SalesPage() {
+  const { user } = useAuth();
   const [isVipActive, setIsVipActive] = useState(true);
   const [vipPackages, setVipPackages] = useState([]);
   const [originalVipPackages, setOriginalVipPackages] = useState([]);
@@ -72,24 +75,25 @@ export default function SalesPage() {
   const handleVipToggleChange = async (checked) => {
     setIsVipActive(checked);
 
-    await supabase
-      .from('app_settings')
-      .upsert({ id: 1, is_vip_active: checked });
+    await backofficeMutation(user, 'app_settings', 'upsert', { id: 1, is_vip_active: checked }, {}, 'id');
   };
 
   const handleSaveVip = async () => {
     setIsSaving(true);
     for (const pkg of vipPackages) {
-      await supabase
-        .from('vip_package')
-        .update({
+      await backofficeMutation(
+        user,
+        'vip_package',
+        'update',
+        {
           price_thb: pkg.price_thb === '' ? 0 : pkg.price_thb,
           price_usd: pkg.price_usd === '' ? 0 : pkg.price_usd,
           price_jpy: pkg.price_jpy === '' ? 0 : pkg.price_jpy,
           price_cny: pkg.price_cny === '' ? 0 : pkg.price_cny,
           is_recommended: pkg.is_recommended
-        })
-        .eq('id', pkg.id);
+        },
+        { id: pkg.id }
+      );
     }
     await fetchPackages();
     setIsSaving(false);

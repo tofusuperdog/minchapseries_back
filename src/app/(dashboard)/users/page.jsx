@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { backofficeMutation, backofficeQuery } from '@/lib/backoffice';
 
 const permissionColumns = [
   { key: 'dashboard', label: 'ภาพรวม', icon: '/dashboard.svg', alwaysOn: true },
@@ -191,6 +193,7 @@ function UserModal({ isOpen, title, formData, setFormData, onClose, onSave, isAd
 }
 
 export default function UsersPage() {
+  const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | null
@@ -218,11 +221,10 @@ export default function UsersPage() {
 
   // Fetch users from Supabase
   const fetchUsers = useCallback(async () => {
+    if (!user?.id) return;
+
     setLoading(true);
-    const { data, error } = await supabase
-      .from('user')
-      .select('*')
-      .order('id', { ascending: true });
+    const { data, error } = await backofficeQuery(user, 'users');
 
     if (error) {
       console.error('Error fetching users:', error);
@@ -230,7 +232,7 @@ export default function UsersPage() {
       setUsers(data || []);
     }
     setLoading(false);
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchUsers();
@@ -320,16 +322,16 @@ export default function UsersPage() {
 
     if (modalMode === 'add') {
       const { error } = await supabase
-        .from('user')
-        .insert({
-          username: trimmedUsername,
-          password: rawPassword,
-          perm_series: formData.perm_series,
-          perm_genres: formData.perm_genres,
-          perm_displays: formData.perm_displays,
-          perm_sales: formData.perm_sales,
-          perm_customers: formData.perm_customers,
-          perm_users: formData.perm_users,
+        .rpc('backoffice_users_create_secure', {
+          p_session_token: user.session_token,
+          p_username: trimmedUsername,
+          p_password: rawPassword,
+          p_perm_series: formData.perm_series,
+          p_perm_genres: formData.perm_genres,
+          p_perm_displays: formData.perm_displays,
+          p_perm_sales: formData.perm_sales,
+          p_perm_customers: formData.perm_customers,
+          p_perm_users: formData.perm_users,
         });
 
       if (error) {
@@ -339,30 +341,19 @@ export default function UsersPage() {
         return;
       }
     } else if (modalMode === 'edit' && editingUser) {
-      const updateData = {
-        perm_series: formData.perm_series,
-        perm_genres: formData.perm_genres,
-        perm_displays: formData.perm_displays,
-        perm_sales: formData.perm_sales,
-        perm_customers: formData.perm_customers,
-        perm_users: formData.perm_users,
-        updated_at: new Date().toISOString(),
-      };
-
-      // Allow username change only if not admin
-      if (!editingUser.is_admin) {
-        updateData.username = trimmedUsername;
-      }
-
-      // Only update password if provided
-      if (rawPassword.trim()) {
-        updateData.password = rawPassword;
-      }
-
       const { error } = await supabase
-        .from('user')
-        .update(updateData)
-        .eq('id', editingUser.id);
+        .rpc('backoffice_users_update_secure', {
+          p_session_token: user.session_token,
+          p_user_id: editingUser.id,
+          p_username: trimmedUsername,
+          p_password: rawPassword,
+          p_perm_series: formData.perm_series,
+          p_perm_genres: formData.perm_genres,
+          p_perm_displays: formData.perm_displays,
+          p_perm_sales: formData.perm_sales,
+          p_perm_customers: formData.perm_customers,
+          p_perm_users: formData.perm_users,
+        });
 
       if (error) {
         console.error('Error updating user:', error);
@@ -390,9 +381,10 @@ export default function UsersPage() {
     if (!deleteTarget) return;
 
     const { error } = await supabase
-      .from('user')
-      .delete()
-      .eq('id', deleteTarget.id);
+      .rpc('backoffice_users_delete_secure', {
+        p_session_token: user.session_token,
+        p_user_id: deleteTarget.id,
+      });
 
     if (error) {
       console.error('Error deleting user:', error);
