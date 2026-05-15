@@ -57,7 +57,7 @@ export function shouldUseHlsProxy() {
     String(
       process.env.BYTEPLUS_USE_HLS_PROXY ||
         process.env.NEXT_PUBLIC_USE_HLS_PROXY ||
-        'true'
+        'false'
     ).toLowerCase() !== 'false'
   );
 }
