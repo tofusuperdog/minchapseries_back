@@ -289,8 +289,23 @@ export default function EditSeriesPage() {
         }
       }
 
-      // Attempt explicit episode removal to satisfy foreign-key constraints if cascade is off
-      await backofficeMutation(user, 'episode', 'delete', {}, { series_id: seriesId });
+      // Attempt explicit child-row removal to satisfy foreign-key constraints if cascade is off
+      const childDeleteTargets = [
+        'customer_recent_series',
+        'episode',
+      ];
+
+      for (const table of childDeleteTargets) {
+        const { error: childDeleteError } = await backofficeMutation(user, table, 'delete', {}, { series_id: seriesId });
+
+        if (childDeleteError) {
+          console.error(`Error deleting ${table}:`, childDeleteError);
+          showError('ไม่สามารถลบข้อมูลที่เกี่ยวข้องกับซีรีส์ได้: ' + (childDeleteError.message || ''));
+          setIsDeleting(false);
+          setShowDeleteModal(false);
+          return;
+        }
+      }
 
       const { error } = await backofficeMutation(user, 'series', 'delete', {}, { id: seriesId });
       if (error) {
