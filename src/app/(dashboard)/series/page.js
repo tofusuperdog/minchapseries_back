@@ -155,11 +155,27 @@ export default function SeriesPage() {
     }
 
     const { error } = await backofficeMutation(user, 'series', 'update', { status: 'not_ready' }, { id });
-    if (!error) {
-      setSeries(prev => prev.map(s => s.id === id ? { ...s, status: 'not_ready' } : s));
-    } else {
+    if (error) {
       showError('เกิดข้อผิดพลาดในการยกเลิกการเผยแพร่');
+      return;
     }
+
+    const cleanupTargets = [
+      'customer_favorite_series',
+      'customer_recent_series',
+    ];
+
+    for (const table of cleanupTargets) {
+      const { error: cleanupError } = await backofficeMutation(user, table, 'delete', {}, { series_id: id });
+
+      if (cleanupError) {
+        console.error(`Error deleting ${table}:`, cleanupError);
+        showError('ยกเลิกการเผยแพร่แล้ว แต่ไม่สามารถลบข้อมูลลูกค้าที่เกี่ยวข้องได้');
+        return;
+      }
+    }
+
+    setSeries(prev => prev.map(s => s.id === id ? { ...s, status: 'not_ready' } : s));
   };
 
   const getGenreNames = (genreIds) => {
